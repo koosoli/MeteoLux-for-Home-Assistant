@@ -1,0 +1,34 @@
+"""Data update coordinator for the MeteoLux integration."""
+from datetime import timedelta
+import logging
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .api import MeteoluxApiClient
+from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class MeteoluxDataUpdateCoordinator(DataUpdateCoordinator):
+    """MeteoLux data update coordinator."""
+
+    def __init__(self, hass: HomeAssistant, client: MeteoluxApiClient) -> None:
+        """Initialize the coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            # The data is updated daily, but we can poll more often to catch updates.
+            # A 30 minute interval should be fine.
+            update_interval=timedelta(minutes=30),
+        )
+        self.client = client
+
+    async def _async_update_data(self):
+        """Fetch data from API."""
+        data = await self.client.async_get_data()
+        if not data:
+            raise UpdateFailed("No data received from MeteoLux")
+        return data
