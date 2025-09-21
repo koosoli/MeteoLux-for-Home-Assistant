@@ -5,13 +5,17 @@ import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import MeteoluxApiClient
+from .api import (
+    MeteoluxApiClient,
+    MeteoluxApiClientError,
+    MeteoluxData,
+)
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class MeteoluxDataUpdateCoordinator(DataUpdateCoordinator):
+class MeteoluxDataUpdateCoordinator(DataUpdateCoordinator[MeteoluxData]):
     """MeteoLux data update coordinator."""
 
     def __init__(self, hass: HomeAssistant, client: MeteoluxApiClient) -> None:
@@ -26,9 +30,9 @@ class MeteoluxDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self.client = client
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> MeteoluxData:
         """Fetch data from API."""
-        data = await self.client.async_get_data()
-        if not data:
-            raise UpdateFailed("No data received from MeteoLux")
-        return data
+        try:
+            return await self.client.async_get_data()
+        except MeteoluxApiClientError as err:
+            raise UpdateFailed(str(err)) from err

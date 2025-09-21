@@ -1,6 +1,7 @@
 """The MeteoLux integration."""
 from __future__ import annotations
 
+import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -10,7 +11,7 @@ from .api import MeteoluxApiClient
 from .const import DOMAIN
 from .coordinator import MeteoluxDataUpdateCoordinator
 
-PLATFORMS: list[Platform] = [Platform.WEATHER, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

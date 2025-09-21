@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import MeteoluxData
 from .const import DOMAIN
 from .coordinator import MeteoluxDataUpdateCoordinator
 
@@ -27,12 +28,22 @@ from .coordinator import MeteoluxDataUpdateCoordinator
 @dataclass
 class MeteoluxSensorEntityDescription(SensorEntityDescription):
     """Describes a MeteoLux sensor entity."""
-    value_fn: Callable[[dict[str, Any]], float | str | None] = None
+
+    value_fn: Callable[[MeteoluxData], float | str | None] = None
+    available_fn: Callable[[MeteoluxData], bool] = lambda data: True
 
 
-def get_forecast_value_fn(period: str, key: str) -> Callable[[dict[str, Any]], Any]:
+def get_forecast_value_fn(period: str, key: str) -> Callable[[MeteoluxData], Any]:
     """Create a value_fn to get a value from a specific forecast period."""
-    return lambda data: data.get("forecasts", {}).get(period, {}).get(key)
+    return lambda data: getattr(data.forecasts.get(period), key, None)
+
+
+def get_forecast_available_fn(period: str) -> Callable[[MeteoluxData], bool]:
+    """Create an available_fn to check if a forecast period is available."""
+    return (
+        lambda data: data.forecasts.get(period) is not None
+        and data.forecasts.get(period).is_displayed
+    )
 
 
 SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
@@ -41,32 +52,55 @@ SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
         translation_key="temp_max",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
-        value_fn=lambda data: data.get("day", {}).get("temp_max"),
+        value_fn=lambda data: data.temp_max,
     ),
     MeteoluxSensorEntityDescription(
         key="temp_min",
         translation_key="temp_min",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
-        value_fn=lambda data: data.get("day", {}).get("temp_min"),
+        value_fn=lambda data: data.temp_min,
     ),
-    *(
-        MeteoluxSensorEntityDescription(
-            key=f"{period}_{key}",
-            translation_key=f"{period}_{key}",
-            native_unit_of_measurement=unit,
-            device_class=device_class,
-            icon=icon,
-            value_fn=get_forecast_value_fn(period, key),
-        )
-        for period in ("morning", "afternoon", "evening")
-        for key, unit, device_class, icon in (
-            ("precipitation", UnitOfPrecipitationDepth.MILLIMETERS, SensorDeviceClass.PRECIPITATION, "mdi:weather-rainy"),
-            ("wind_force", UnitOfSpeed.KILOMETERS_PER_HOUR, SensorDeviceClass.WIND_SPEED, "mdi:weather-windy"),
-            ("wind_gusts", UnitOfSpeed.KILOMETERS_PER_HOUR, SensorDeviceClass.WIND_SPEED, "mdi:weather-windy-variant"),
-            ("wind_direction", None, None, "mdi:compass-outline"),
-            ("weather", None, None, "mdi:card-text-outline"),
-        )
+)
+
+FORECAST_SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
+    MeteoluxSensorEntityDescription(
+        key="temp_low",
+        translation_key="temp_low",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="temp_high",
+        translation_key="temp_high",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="precipitation",
+        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        device_class=SensorDeviceClass.PRECIPITATION,
+        icon="mdi:weather-rainy",
+    ),
+    MeteoluxSensorEntityDescription(
+        key="wind_force",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        icon="mdi:weather-windy",
+    ),
+    MeteoluxSensorEntityDescription(
+        key="wind_gusts",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        icon="mdi:weather-windy-variant",
+    ),
+    MeteoluxSensorEntityDescription(
+        key="wind_direction",
+        icon="mdi:compass-outline",
+    ),
+    MeteoluxSensorEntityDescription(
+        key="weather",
+        icon="mdi:card-text-outline",
     ),
 )
 
@@ -79,10 +113,25 @@ async def async_setup_entry(
     """Set up the MeteoLux sensor platform."""
     coordinator: MeteoluxDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [
-        MeteoluxSensor(coordinator, description)
-        for description in SENSORS
-    ]
+    entities = [MeteoluxSensor(coordinator, description) for description in SENSORS]
+
+    for period in ("morning", "afternoon", "evening"):
+        for description in FORECAST_SENSORS:
+            entities.append(
+                MeteoluxSensor(
+                    coordinator,
+                    MeteoluxSensorEntityDescription(
+                        key=f"{period}_{description.key}",
+                        translation_key=f"{period}_{description.key}",
+                        native_unit_of_measurement=description.native_unit_of_measurement,
+                        device_class=description.device_class,
+                        icon=description.icon,
+                        value_fn=get_forecast_value_fn(period, description.key),
+                        available_fn=get_forecast_available_fn(period),
+                    ),
+                )
+            )
+
     async_add_entities(entities)
 
 
@@ -112,4 +161,8 @@ class MeteoluxSensor(CoordinatorEntity[MeteoluxDataUpdateCoordinator], SensorEnt
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
-        return super().available and self.native_value is not None
+        return (
+            super().available
+            and self.coordinator.data is not None
+            and self.entity_description.available_fn(self.coordinator.data)
+        )
