@@ -12,7 +12,7 @@ The integration fetches data from the official MeteoLux open data feed, which is
 
 1.  Go to HACS -> Integrations.
 2.  Click on the 3 dots in the top right corner and select "Custom repositories".
-3.  Add the URL of this repository (`https://github.com/jules-agent/meteolux-hacs`) and select "Integration" as the category.
+3.  Add the URL of this repository (`https://github.com/koosoli/MeteoLux-for-Home-Assistant`) and select "Integration" as the category.
 4.  Click "Add".
 5.  The "MeteoLux" integration will now be available to install. Click "Install".
 6.  Restart Home Assistant.
