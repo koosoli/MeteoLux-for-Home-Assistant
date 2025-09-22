@@ -18,55 +18,55 @@
         },
         "sensor": {
             "temp_max": {
-                "name": "Max Temperature"
+                "name": "ML - Max Temperature"
             },
             "temp_min": {
-                "name": "Min Temperature"
+                "name": "ML - Min Temperature"
             },
             "morning_precipitation": {
-                "name": "Morning Precipitation"
+                "name": "ML - Morning Precipitation"
             },
             "afternoon_precipitation": {
-                "name": "Afternoon Precipitation"
+                "name": "ML - Afternoon Precipitation"
             },
             "evening_precipitation": {
-                "name": "Evening Precipitation"
+                "name": "ML - Evening Precipitation"
             },
             "morning_wind_force": {
-                "name": "Morning Wind Speed"
+                "name": "ML - Morning Wind Speed"
             },
             "afternoon_wind_force": {
-                "name": "Afternoon Wind Speed"
+                "name": "ML - Afternoon Wind Speed"
             },
             "evening_wind_force": {
-                "name": "Evening Wind Speed"
+                "name": "ML - Evening Wind Speed"
             },
             "morning_wind_gusts": {
-                "name": "Morning Wind Gusts"
+                "name": "ML - Morning Wind Gusts"
             },
             "afternoon_wind_gusts": {
-                "name": "Afternoon Wind Gusts"
+                "name": "ML - Afternoon Wind Gusts"
             },
             "evening_wind_gusts": {
-                "name": "Evening Wind Gusts"
+                "name": "ML - Evening Wind Gusts"
             },
             "morning_wind_direction": {
-                "name": "Morning Wind Direction"
+                "name": "ML - Morning Wind Direction"
             },
             "afternoon_wind_direction": {
-                "name": "Afternoon Wind Direction"
+                "name": "ML - Afternoon Wind Direction"
             },
             "evening_wind_direction": {
-                "name": "Evening Wind Direction"
+                "name": "ML - Evening Wind Direction"
             },
             "morning_weather": {
-                "name": "Morning Weather"
+                "name": "ML - Morning Weather"
             },
             "afternoon_weather": {
-                "name": "Afternoon Weather"
+                "name": "ML - Afternoon Weather"
             },
             "evening_weather": {
-                "name": "Evening Weather"
+                "name": "ML - Evening Weather"
             }
         }
     }

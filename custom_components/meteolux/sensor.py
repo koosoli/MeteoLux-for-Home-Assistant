@@ -17,6 +17,7 @@ from homeassistant.const import (
     UnitOfPrecipitationDepth,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -150,6 +151,11 @@ class MeteoluxSensor(CoordinatorEntity[MeteoluxDataUpdateCoordinator], SensorEnt
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
         self._attr_has_entity_name = True
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
+            name="MeteoLux",
+            manufacturer="MeteoLux",
+        )
 
     @property
     def native_value(self) -> float | str | None:
