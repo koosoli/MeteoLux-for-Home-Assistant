@@ -42,7 +42,7 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_precipitation_unit = UnitOfPrecipitationDepth.MILLIMETERS
     _attr_native_wind_speed_unit = UnitOfSpeed.KILOMETERS_PER_HOUR
-    _attr_supported_features = WeatherEntityFeature.FORECAST_DAILY
+    _attr_supported_features = WeatherEntityFeature.FORECAST_HOURLY
 
     def __init__(self, coordinator: MeteoluxDataUpdateCoordinator) -> None:
         """Initialize the weather entity."""
@@ -101,8 +101,8 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
             return None
         return current_forecast.wind_direction
 
-    async def async_forecast_daily(self) -> list[Forecast] | None:
-        """Return the daily forecast."""
+    async def async_forecast_hourly(self) -> list[Forecast] | None:
+        """Return the hourly forecast."""
         if not self.coordinator.data:
             return None
 

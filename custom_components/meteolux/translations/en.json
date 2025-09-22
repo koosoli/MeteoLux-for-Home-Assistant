@@ -23,6 +23,24 @@
             "temp_min": {
                 "name": "ML - Min Temperature"
             },
+            "morning_temp_low": {
+                "name": "ML - Morning Low Temperature"
+            },
+            "morning_temp_high": {
+                "name": "ML - Morning High Temperature"
+            },
+            "afternoon_temp_low": {
+                "name": "ML - Afternoon Low Temperature"
+            },
+            "afternoon_temp_high": {
+                "name": "ML - Afternoon High Temperature"
+            },
+            "evening_temp_low": {
+                "name": "ML - Evening Low Temperature"
+            },
+            "evening_temp_high": {
+                "name": "ML - Evening High Temperature"
+            },
             "morning_precipitation": {
                 "name": "ML - Morning Precipitation"
             },
