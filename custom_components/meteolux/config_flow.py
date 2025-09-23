@@ -5,13 +5,14 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, FlowResult
+from homeassistant.config_entries import ConfigFlow
 from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE
+from homeassistant.data_entry_flow import FlowResult
 
 from .const import DOMAIN
 
 
-class MeteoluxConfigFlow(ConfigFlow):
+class MeteoluxConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for MeteoLux."""
 
     VERSION = 1
