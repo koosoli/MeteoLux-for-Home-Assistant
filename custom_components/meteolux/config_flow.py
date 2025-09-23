@@ -26,13 +26,6 @@ from homeassistant.helpers.selectors import SelectSelector, SelectSelectorConfig
 
 _LOGGER = logging.getLogger(__name__)
 
-OPTIONS_SCHEMA = vol.Schema({
-    vol.Required(CONF_FORECAST_DAYS, default=DEFAULT_FORECAST_DAYS): vol.In(FORECAST_DAYS_RANGE),
-    vol.Required(CONF_LANGUAGE, default=DEFAULT_LANGUAGE): SelectSelector(SelectSelectorConfig(options=LANGUAGES, mode=SelectSelectorMode.DROPDOWN)),
-})
-
-CONFIG_SCHEMA = vol.Schema({vol.Required("dummy", default=True): bool})
-
 
 class MeteoluxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for MeteoLux."""
