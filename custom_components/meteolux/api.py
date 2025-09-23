@@ -25,6 +25,8 @@ class MeteoluxData:
     temp_min: float | None
     temp_max: float | None
     forecasts: dict[str, Forecast]
+    city: str | None = None
+    current_weather: Forecast | None = None
 
     @classmethod
     def from_raw(cls, raw_data: dict[str, str]) -> Self:
@@ -67,6 +69,89 @@ class MeteoluxData:
             )
         return cls(**data)
 
+    @classmethod
+    def from_json(cls, json_data: dict[str, Any]) -> Self:
+        """Parse JSON data into a MeteoluxData object."""
+        # Extract city information
+        city_name = json_data.get("city", {}).get("name", "Luxembourg")
+        
+        # Get forecast data
+        forecast_data = json_data.get("forecast", {})
+        
+        # Extract current weather if available
+        current_weather = None
+        current_data = forecast_data.get("current")
+        if current_data:
+            current_weather = Forecast(
+                is_displayed=True,
+                weather=current_data.get("icon", {}).get("name"),
+                icon=str(current_data.get("icon", {}).get("id", "")),
+                temp_range=None,
+                temp_low=None,
+                temp_high=_parse_float(str(current_data.get("temperature", {}).get("temperature", ""))),
+                precipitation=_parse_float(str(current_data.get("rain", "0"))),
+                wind_direction=current_data.get("wind", {}).get("direction"),
+                wind_force=_parse_float(str(current_data.get("wind", {}).get("speed", "0"))),
+                wind_gusts=None,
+                rain=_parse_float(str(current_data.get("rain", "0"))),
+                snow=_parse_float(str(current_data.get("snow", "0"))),
+            )
+        
+        # Parse daily forecasts
+        forecasts = {}
+        daily_data = forecast_data.get("daily", [])
+        
+        # Find min/max temperatures from daily forecasts
+        temp_min = None
+        temp_max = None
+        
+        for daily in daily_data:
+            date_str = daily.get("date", "")
+            
+            # Extract temperatures
+            temp_min_val = _parse_float(str(daily.get("temperatureMin", {}).get("temperature", "")))
+            temp_max_val = _parse_float(str(daily.get("temperatureMax", {}).get("temperature", "")))
+            
+            # Update overall min/max
+            if temp_min_val is not None:
+                temp_min = temp_min_val if temp_min is None else min(temp_min, temp_min_val)
+            if temp_max_val is not None:
+                temp_max = temp_max_val if temp_max is None else max(temp_max, temp_max_val)
+            
+            forecasts[date_str] = Forecast(
+                is_displayed=True,
+                weather=daily.get("icon", {}).get("name"),
+                icon=str(daily.get("icon", {}).get("id", "")),
+                temp_range=None,
+                temp_low=temp_min_val,
+                temp_high=temp_max_val,
+                precipitation=_parse_float(str(daily.get("rain", "0"))),
+                wind_direction=daily.get("wind", {}).get("direction"),
+                wind_force=_parse_float(str(daily.get("wind", {}).get("speed", "0"))),
+                wind_gusts=None,
+                sunshine=_parse_float(str(daily.get("sunshine", ""))),
+                uv_index=_parse_float(str(daily.get("uvIndex", ""))),
+                rain=_parse_float(str(daily.get("rain", "0"))),
+                snow=_parse_float(str(daily.get("snow", "0"))),
+            )
+        
+        # Use current timestamp if no specific timestamp is provided
+        created = datetime.now()
+        if current_data and current_data.get("date"):
+            try:
+                created = datetime.fromisoformat(current_data["date"].replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                pass
+        
+        return cls(
+            created=created,
+            temp_min=temp_min,
+            temp_max=temp_max,
+            forecasts=forecasts,
+            city=city_name,
+            current_weather=current_weather,
+        )
+
 
 @dataclass
 class Forecast:
@@ -82,6 +167,10 @@ class Forecast:
     wind_direction: str | None
     wind_force: float | None
     wind_gusts: float | None
+    sunshine: float | None = None
+    uv_index: float | None = None
+    rain: float | None = None
+    snow: float | None = None
 
 
 class MeteoluxApiClientError(Exception):
@@ -181,3 +270,43 @@ class MeteoluxApiClient:
             return MeteoluxData.from_raw(raw_data)
         except (csv.Error, KeyError, IndexError, ValueError, TypeError) as err:
             raise MeteoluxApiClientError("Failed to parse MeteoLux data") from err
+
+
+class MeteoluxApiJsonClient:
+    """MeteoLux JSON API client."""
+
+    def __init__(self, session: aiohttp.ClientSession, latitude: float, longitude: float):
+        """Initialize the client."""
+        self._session = session
+        self._latitude = latitude
+        self._longitude = longitude
+
+    async def async_get_data(self) -> MeteoluxData:
+        """Get data from the JSON API and parse it into a MeteoluxData object.
+
+        Raises:
+            MeteoluxApiClientError: If the API returns an error or the data is malformed.
+            MeteoluxApiConnectionError: If there is a connection error.
+        """
+        from .const import API_URL
+
+        # Construct the API URL with location parameters
+        url = f"{API_URL}/forecast"
+        params = {
+            "lat": self._latitude,
+            "lon": self._longitude,
+        }
+
+        try:
+            async with self._session.get(url, params=params) as response:
+                response.raise_for_status()
+                json_data = await response.json()
+        except ClientResponseError as err:
+            raise MeteoluxApiClientError(f"HTTP error: {err.status}") from err
+        except (ClientConnectorError, asyncio.TimeoutError) as err:
+            raise MeteoluxApiConnectionError("Could not connect to MeteoLux JSON API") from err
+
+        try:
+            return MeteoluxData.from_json(json_data)
+        except (KeyError, IndexError, ValueError, TypeError) as err:
+            raise MeteoluxApiClientError("Failed to parse MeteoLux JSON data") from err
