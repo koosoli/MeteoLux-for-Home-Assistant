@@ -12,31 +12,51 @@ from typing import Any, Self
 import aiohttp
 from aiohttp.client_exceptions import ClientConnectorError, ClientResponseError
 
-from .const import DATA_URL
+from .const import API_URL, DATA_URL
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class Forecast:
+    """Class for holding forecast data."""
+
+    weather: str | None
+    icon: str | None
+    temp_low: float | None
+    temp_high: float | None
+    precipitation: float | None
+    wind_direction: str | None
+    wind_force: float | None
+    wind_gusts: float | None
+    is_displayed: bool = True
+    datetime: datetime | None = None
 
 
 @dataclass
 class MeteoluxData:
     """Class for holding MeteoLux data."""
 
+    city: str | None
     created: datetime
     temp_min: float | None
     temp_max: float | None
+    current_weather: Forecast | None
     forecasts: dict[str, Forecast]
 
     @classmethod
     def from_raw(cls, raw_data: dict[str, str]) -> Self:
-        """Parse raw data into a MeteoluxData object."""
+        """Parse raw data from the CSV endpoint into a MeteoluxData object."""
         created_str = raw_data.get("created")
         if not created_str:
             raise ValueError("Missing 'created' timestamp")
 
         data = {
+            "city": "Luxembourg",
             "created": datetime.strptime(created_str, "%d-%m-%Y %H:%M:%S"),
             "temp_min": _parse_float(raw_data.get("temp_min")),
             "temp_max": _parse_float(raw_data.get("temp_max")),
+            "current_weather": None,
             "forecasts": {},
         }
 
@@ -55,7 +75,6 @@ class MeteoluxData:
                 is_displayed=raw_data.get(f"{prefix}is_displayed") == "1",
                 weather=raw_data.get(f"{prefix}weather"),
                 icon=raw_data.get(f"{prefix}icon"),
-                temp_range=raw_data.get(f"{prefix}temp_range"),
                 temp_low=temp_low,
                 temp_high=temp_high,
                 precipitation=_parse_precipitation(
@@ -67,21 +86,44 @@ class MeteoluxData:
             )
         return cls(**data)
 
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> Self:
+        """Parse JSON data into a MeteoluxData object."""
+        current = data["forecast"]["current"]
+        daily = data["forecast"]["daily"]
 
-@dataclass
-class Forecast:
-    """Class for holding forecast data."""
+        forecasts = {}
+        for day in daily:
+            forecasts[day["date"]] = Forecast(
+                datetime=datetime.fromisoformat(day["date"]),
+                weather=day["icon"]["name"],
+                icon=day["icon"]["name"],
+                temp_low=_parse_float(day["temperatureMin"]["temperature"]),
+                temp_high=_parse_float(day["temperatureMax"]["temperature"]),
+                precipitation=None,
+                wind_direction=day["wind"]["direction"],
+                wind_force=_parse_float(day["wind"]["speed"]),
+                wind_gusts=None,
+            )
 
-    is_displayed: bool
-    weather: str | None
-    icon: str | None
-    temp_range: str | None
-    temp_low: float | None
-    temp_high: float | None
-    precipitation: float | None
-    wind_direction: str | None
-    wind_force: float | None
-    wind_gusts: float | None
+        return cls(
+            city=data["city"]["name"],
+            created=datetime.fromisoformat(current["date"]),
+            temp_min=_parse_float(daily[0]["temperatureMin"]["temperature"]),
+            temp_max=_parse_float(daily[0]["temperatureMax"]["temperature"]),
+            current_weather=Forecast(
+                datetime=datetime.fromisoformat(current["date"]),
+                weather=current["icon"]["name"],
+                icon=current["icon"]["name"],
+                temp_low=None,
+                temp_high=_parse_float(current["temperature"]["temperature"]),
+                precipitation=_parse_float(current["rain"]),
+                wind_direction=current["wind"]["direction"],
+                wind_force=_parse_float(current["wind"]["speed"]),
+                wind_gusts=None,
+            ),
+            forecasts=forecasts,
+        )
 
 
 class MeteoluxApiClientError(Exception):
@@ -92,10 +134,12 @@ class MeteoluxApiConnectionError(MeteoluxApiClientError):
     """Exception to indicate a connection error."""
 
 
-def _parse_float(value: str | None, decimal_separator: str = ".") -> float | None:
+def _parse_float(value: str | int | float | None, decimal_separator: str = ".") -> float | None:
     """Parse a float from a string, returning None on failure."""
     if value is None:
         return None
+    if isinstance(value, (int, float)):
+        return float(value)
     try:
         return float(value.replace(decimal_separator, ",").replace(",", "."))
     except (ValueError, TypeError):
@@ -180,4 +224,44 @@ class MeteoluxApiClient:
         try:
             return MeteoluxData.from_raw(raw_data)
         except (csv.Error, KeyError, IndexError, ValueError, TypeError) as err:
+            raise MeteoluxApiClientError("Failed to parse MeteoLux data") from err
+
+
+class MeteoluxApiJsonClient:
+    """MeteoLux API client for the JSON API."""
+
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        lat: float | None = None,
+        long: float | None = None,
+    ):
+        """Initialize the client."""
+        self._session = session
+        self._lat = lat
+        self._long = long
+
+    async def async_get_data(self) -> MeteoluxData:
+        """Get data from the API and parse it into a MeteoluxData object."""
+        params = {}
+        if self._lat and self._long:
+            params["lat"] = self._lat
+            params["long"] = self._long
+
+        _LOGGER.debug(f"Requesting weather data with params: {params}")
+
+        try:
+            async with self._session.get(
+                f"{API_URL}/metapp/weather", params=params
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+        except ClientResponseError as err:
+            raise MeteoluxApiClientError(f"HTTP error: {err.status}") from err
+        except (ClientConnectorError, asyncio.TimeoutError) as err:
+            raise MeteoluxApiConnectionError("Could not connect to MeteoLux") from err
+
+        try:
+            return MeteoluxData.from_json(data)
+        except (KeyError, IndexError, ValueError, TypeError) as err:
             raise MeteoluxApiClientError("Failed to parse MeteoLux data") from err

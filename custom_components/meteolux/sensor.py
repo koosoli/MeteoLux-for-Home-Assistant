@@ -9,12 +9,15 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfTemperature,
     UnitOfSpeed,
     UnitOfPrecipitationDepth,
+    UV_INDEX,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -105,6 +108,25 @@ FORECAST_SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
     ),
 )
 
+JSON_SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
+    MeteoluxSensorEntityDescription(
+        key="sunshine",
+        translation_key="sunshine",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.forecasts[next(iter(data.forecasts))].sunshine,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="uv_index",
+        translation_key="uv_index",
+        native_unit_of_measurement=UV_INDEX,
+        device_class=SensorDeviceClass.ILLUMINANCE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.forecasts[next(iter(data.forecasts))].uv_index,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -114,24 +136,30 @@ async def async_setup_entry(
     """Set up the MeteoLux sensor platform."""
     coordinator: MeteoluxDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [MeteoluxSensor(coordinator, description) for description in SENSORS]
-
-    for period in ("morning", "afternoon", "evening"):
-        for description in FORECAST_SENSORS:
-            entities.append(
-                MeteoluxSensor(
-                    coordinator,
-                    MeteoluxSensorEntityDescription(
-                        key=f"{period}_{description.key}",
-                        translation_key=f"{period}_{description.key}",
-                        native_unit_of_measurement=description.native_unit_of_measurement,
-                        device_class=description.device_class,
-                        icon=description.icon,
-                        value_fn=get_forecast_value_fn(period, description.key),
-                        available_fn=get_forecast_available_fn(period),
-                    ),
+    entities = []
+    if coordinator.data.city:
+        for description in JSON_SENSORS:
+            entities.append(MeteoluxSensor(coordinator, description))
+    else:
+        entities.extend(
+            [MeteoluxSensor(coordinator, description) for description in SENSORS]
+        )
+        for period in ("morning", "afternoon", "evening"):
+            for description in FORECAST_SENSORS:
+                entities.append(
+                    MeteoluxSensor(
+                        coordinator,
+                        MeteoluxSensorEntityDescription(
+                            key=f"{period}_{description.key}",
+                            translation_key=f"{period}_{description.key}",
+                            native_unit_of_measurement=description.native_unit_of_measurement,
+                            device_class=description.device_class,
+                            icon=description.icon,
+                            value_fn=get_forecast_value_fn(period, description.key),
+                            available_fn=get_forecast_available_fn(period),
+                        ),
+                    )
                 )
-            )
 
     async_add_entities(entities)
 
@@ -151,9 +179,10 @@ class MeteoluxSensor(CoordinatorEntity[MeteoluxDataUpdateCoordinator], SensorEnt
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
         self._attr_has_entity_name = True
+        name = f"MeteoLux - {coordinator.data.city}" if coordinator.data.city else "MeteoLux"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name="MeteoLux",
+            name=name,
             manufacturer="MeteoLux",
         )
 

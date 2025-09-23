@@ -1,6 +1,7 @@
 """Data update coordinator for the MeteoLux integration."""
 from datetime import timedelta
 import logging
+from typing import Union
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -9,6 +10,7 @@ from .api import (
     MeteoluxApiClient,
     MeteoluxApiClientError,
     MeteoluxData,
+    MeteoluxApiJsonClient,
 )
 from .const import DOMAIN
 
@@ -18,7 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 class MeteoluxDataUpdateCoordinator(DataUpdateCoordinator[MeteoluxData]):
     """MeteoLux data update coordinator."""
 
-    def __init__(self, hass: HomeAssistant, client: MeteoluxApiClient) -> None:
+    def __init__(
+        self, hass: HomeAssistant, client: Union[MeteoluxApiClient, MeteoluxApiJsonClient]
+    ) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
