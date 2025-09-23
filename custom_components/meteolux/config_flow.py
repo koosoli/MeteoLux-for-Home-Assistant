@@ -33,19 +33,27 @@ class MeteoluxConfigFlow(ConfigFlow):
                 },
             )
 
-        latitude = self.hass.config.latitude
-        longitude = self.hass.config.longitude
+        # Check for existing coordinates in Home Assistant config
+        if hasattr(self.hass.config, "latitude") and hasattr(
+            self.hass.config, "longitude"
+        ):
+            default_lat = self.hass.config.latitude
+            default_lon = self.hass.config.longitude
+            data_schema = vol.Schema(
+                {
+                    vol.Required(CONF_LATITUDE, default=default_lat): float,
+                    vol.Required(CONF_LONGITUDE, default=default_lon): float,
+                }
+            )
+        else:
+            data_schema = vol.Schema(
+                {
+                    vol.Required(CONF_LATITUDE): float,
+                    vol.Required(CONF_LONGITUDE): float,
+                }
+            )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_LATITUDE, default=latitude
-                    ): float,
-                    vol.Required(
-                        CONF_LONGITUDE, default=longitude
-                    ): float,
-                }
-            ),
+            data_schema=data_schema,
         )
