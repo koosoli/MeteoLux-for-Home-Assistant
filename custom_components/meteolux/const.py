@@ -5,8 +5,8 @@ from typing import Final
 DOMAIN = "meteolux"
 
 CONF_FORECAST_DAYS: Final = "forecast_days"
-DEFAULT_FORECAST_DAYS: Final = 7
-FORECAST_DAYS_RANGE: Final = list(range(1, 8))
+DEFAULT_FORECAST_DAYS: Final = 5
+FORECAST_DAYS_RANGE: Final = list(range(1, 6))
 
 # Old CSV data source (kept as fallback)
 DATA_URL = "https://data.public.lu/en/datasets/r/c05ecc27-aa44-4c96-bece-6149783e1758"

@@ -22,7 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import MeteoluxData
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_FORECAST_DAYS
 from .coordinator import MeteoluxDataUpdateCoordinator
 
 
@@ -154,15 +154,23 @@ async def async_setup_entry(
 
     entities = [MeteoluxSensor(coordinator, description) for description in SENSORS]
 
-    forecast_days = entry.options.get("forecast_days", 7)
-    for day in range(forecast_days):
+    configured_forecast_days = entry.options.get(
+        "forecast_days", DEFAULT_FORECAST_DAYS
+    )
+
+    available_forecasts = 0
+    if coordinator.data and coordinator.data.daily_forecasts:
+        available_forecasts = len(coordinator.data.daily_forecasts)
+
+    # Create sensors only for the available forecast days, up to the configured limit
+    for day in range(min(configured_forecast_days, available_forecasts)):
         for description in FORECAST_SENSORS:
             entities.append(
                 MeteoluxDaySensor(
                     coordinator,
                     day,
                     MeteoluxSensorEntityDescription(
-                        key=f"day_{day}_{description.key}",
+                        key=f"day_{day+1}_{description.key}",
                         translation_key=description.translation_key,
                         native_unit_of_measurement=description.native_unit_of_measurement,
                         device_class=description.device_class,

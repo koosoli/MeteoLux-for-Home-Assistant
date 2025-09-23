@@ -135,12 +135,18 @@ class MeteoluxData:
             # Extract weather condition from various possible formats
             weather_condition = None
             if isinstance(current_data.get("weather"), dict):
-                weather_condition = current_data["weather"].get("description")
+                weather_condition = (
+                    current_data["weather"].get("condition")
+                    or current_data["weather"].get("description")
+                )
             elif isinstance(current_data.get("weather"), str):
                 weather_condition = current_data["weather"]
             elif "condition" in current_data:
                 weather_condition = current_data["condition"]
             
+            if not weather_condition and isinstance(current_data.get("icon"), dict):
+                weather_condition = current_data["icon"].get("name")
+
             # Extract wind data
             wind_speed = None
             wind_direction = None
