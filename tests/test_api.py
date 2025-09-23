@@ -50,6 +50,7 @@ def test_parsing(raw_data: dict[str, str]) -> None:
     assert data.temp_min == 12.0
     assert data.temp_max == 16.0
     assert len(data.forecasts) == 3
+    assert data.city == "Luxembourg"
 
     morning = data.forecasts["morning"]
     assert morning.is_displayed is True

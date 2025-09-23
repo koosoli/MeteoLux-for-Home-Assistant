@@ -4,6 +4,7 @@ from datetime import time
 DOMAIN = "meteolux"
 
 DATA_URL = "https://data.public.lu/en/datasets/r/c05ecc27-aa44-4c96-bece-6149783e1758"
+API_URL = "https://metapi.ana.lu/api/v1"
 
 CONDITION_MAP = {
     "Clear sky": "sunny",
