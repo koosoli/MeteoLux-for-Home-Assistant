@@ -15,7 +15,8 @@
       "init": {
         "title": "MeteoLux Options",
         "data": {
-          "forecast_days": "Number of forecast days"
+          "forecast_days": "Number of forecast days",
+          "language": "Language"
         }
       }
     }
