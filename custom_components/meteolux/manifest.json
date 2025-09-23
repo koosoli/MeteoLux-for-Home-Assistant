@@ -6,6 +6,5 @@
   "codeowners": ["@koosoli"],
   "version": "1.0.0",
   "config_flow": true,
-  "iot_class": "cloud_polling",
-  "requirements": ["meteoalertapi==1.2.0"]
+  "iot_class": "cloud_polling"
 }
