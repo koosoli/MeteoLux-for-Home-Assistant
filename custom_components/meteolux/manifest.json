@@ -6,7 +6,6 @@
   "codeowners": ["@koosoli"],
   "version": "2.0.1",
   "config_flow": true,
-  "options_flow": true,
   "iot_class": "cloud_polling",
   "requirements": []
 }
