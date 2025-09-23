@@ -10,7 +10,6 @@ from .api import (
     MeteoluxApiClient,
     MeteoluxApiClientError,
     MeteoluxData,
-    MeteoluxApiJsonClient,
 )
 from .const import DOMAIN
 
