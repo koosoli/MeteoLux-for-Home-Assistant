@@ -72,6 +72,8 @@ class MeteoluxData:
     current_weather: CurrentWeather | None = None
     daily_forecasts: list[DailyForecast] | None = None
     hourly_forecasts: list[HourlyForecast] | None = None
+    data_source: str | None = None
+    api_endpoint_used: str | None = None
 
     @classmethod
     def from_raw(cls, raw_data: dict[str, str]) -> Self:
@@ -85,6 +87,7 @@ class MeteoluxData:
             "temp_min": _parse_float(raw_data.get("temp_min")),
             "temp_max": _parse_float(raw_data.get("temp_max")),
             "forecasts": {},
+            "data_source": "CSV",
         }
 
         for i in range(1, 4):  # For morning, afternoon, evening
@@ -115,7 +118,7 @@ class MeteoluxData:
         return cls(**data)
 
     @classmethod
-    def from_api_response(cls, api_data: dict[str, Any]) -> Self:
+    def from_api_response(cls, api_data: dict[str, Any], endpoint_used: str) -> Self:
         """Parse API response data into a MeteoluxData object."""
         created = datetime.now()
         
@@ -285,6 +288,8 @@ class MeteoluxData:
             current_weather=current_weather,
             daily_forecasts=daily_forecasts,
             hourly_forecasts=hourly_forecasts,
+            data_source="API",
+            api_endpoint_used=endpoint_used,
         )
 
 
@@ -425,7 +430,7 @@ class MeteoluxApiClient:
                 if "daily" in data:
                     _LOGGER.debug(f"Daily forecast count: {len(data['daily']) if isinstance(data['daily'], list) else 'Not a list'}")
             
-            return MeteoluxData.from_api_response(data)
+            return MeteoluxData.from_api_response(data, endpoint_used)
         except (KeyError, ValueError, TypeError) as err:
             _LOGGER.error(f"Failed to parse MeteoLux API data from {endpoint_used}: {err}")
             _LOGGER.error(f"Raw data structure: {data}")
