@@ -77,6 +77,10 @@ CONDITION_MAP = {
     "Thunderstorm with light drizzle": "lightning-rainy",
     "Thunderstorm with drizzle": "lightning-rainy",
     "Thunderstorm with heavy drizzle": "lightning-rainy",
+    # Generic fallbacks
+    "Rainy": "rainy",
+    "Snowy": "snowy",
+    "Cloudy": "cloudy",
     # French conditions
     "Ciel dégagé": "sunny",
     "Ciel clair": "sunny",

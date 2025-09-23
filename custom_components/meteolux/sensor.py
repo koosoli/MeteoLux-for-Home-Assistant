@@ -90,47 +90,6 @@ SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
     ),
 )
 
-FORECAST_SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
-    MeteoluxSensorEntityDescription(
-        key="temp_low",
-        translation_key="temp_low",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_class=SensorDeviceClass.TEMPERATURE,
-    ),
-    MeteoluxSensorEntityDescription(
-        key="temp_high",
-        translation_key="temp_high",
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        device_class=SensorDeviceClass.TEMPERATURE,
-    ),
-    MeteoluxSensorEntityDescription(
-        key="precipitation",
-        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
-        device_class=SensorDeviceClass.PRECIPITATION,
-        icon="mdi:weather-rainy",
-    ),
-    MeteoluxSensorEntityDescription(
-        key="wind_force",
-        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
-        device_class=SensorDeviceClass.WIND_SPEED,
-        icon="mdi:weather-windy",
-    ),
-    MeteoluxSensorEntityDescription(
-        key="wind_gusts",
-        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
-        device_class=SensorDeviceClass.WIND_SPEED,
-        icon="mdi:weather-windy-variant",
-    ),
-    MeteoluxSensorEntityDescription(
-        key="wind_direction",
-        icon="mdi:compass-outline",
-    ),
-    MeteoluxSensorEntityDescription(
-        key="weather",
-        icon="mdi:card-text-outline",
-    ),
-)
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -141,23 +100,6 @@ async def async_setup_entry(
     coordinator: MeteoluxDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = [MeteoluxSensor(coordinator, description) for description in SENSORS]
-
-    for period in ("morning", "afternoon", "evening"):
-        for description in FORECAST_SENSORS:
-            entities.append(
-                MeteoluxSensor(
-                    coordinator,
-                    MeteoluxSensorEntityDescription(
-                        key=f"{period}_{description.key}",
-                        translation_key=f"{period}_{description.key}",
-                        native_unit_of_measurement=description.native_unit_of_measurement,
-                        device_class=description.device_class,
-                        icon=description.icon,
-                        value_fn=get_forecast_value_fn(period, description.key),
-                        available_fn=get_forecast_available_fn(period),
-                    ),
-                )
-            )
 
     async_add_entities(entities)
 

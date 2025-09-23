@@ -34,17 +34,21 @@ def _map_condition(weather_description: str | None) -> str:
     """Map MeteoLux weather description to Home Assistant condition."""
     if not weather_description:
         return "unknown"
-    
-    # Try exact match first
-    if weather_description in CONDITION_MAP:
-        return CONDITION_MAP[weather_description]
-    
-    # Try partial matches for more flexible mapping
+
     description_lower = weather_description.lower()
+
+    # Try exact match first (case-insensitive)
     for key, condition in CONDITION_MAP.items():
-        if key.lower() in description_lower:
+        if key.lower() == description_lower:
             return condition
+
+    # Try partial matches for more flexible mapping, prioritizing longer keys
+    sorted_keys = sorted(CONDITION_MAP.keys(), key=len, reverse=True)
+    for key in sorted_keys:
+        if key.lower() in description_lower:
+            return CONDITION_MAP[key]
     
+    _LOGGER.warning("Unmapped weather condition: %s", weather_description)
     return "unknown"
 
 
