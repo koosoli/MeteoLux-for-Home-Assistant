@@ -83,53 +83,18 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
         )
 
     @property
-    def _current_forecast(self) -> MeteoluxForecast | None:
-        """Return the forecast for the current time."""
-        now = dt_util.now()
-        forecasts = self.coordinator.data.forecasts
-
-        # Determine which forecast period is most relevant
-        if now.hour < 12 and "morning" in forecasts:
-            return forecasts["morning"]
-        if now.hour < 18 and "afternoon" in forecasts:
-            return forecasts["afternoon"]
-        if "evening" in forecasts:
-            return forecasts["evening"]
-
-        # Fallback to the first available forecast
-        if forecasts:
-            return next(iter(forecasts.values()))
-
-        return None
-
-    @property
     def condition(self) -> str | None:
         """Return the current condition."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.current_weather:
             return None
-            
-        # Try to get condition from current weather (new API)
-        if self.coordinator.data.current_weather:
-            return _map_condition(self.coordinator.data.current_weather.condition)
-        
-        # Fallback to legacy forecast data
-        if not (current_forecast := self._current_forecast):
-            return None
-        weather_text = current_forecast.weather
-        return CONDITION_MAP.get(weather_text, "unknown")
+        return _map_condition(self.coordinator.data.current_weather.condition)
 
     @property
     def native_temperature(self) -> float | None:
         """Return the temperature."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.current_weather:
             return None
-            
-        # Try to get from current weather (new API)
-        if self.coordinator.data.current_weather:
-            return self.coordinator.data.current_weather.temperature
-        
-        # Fallback to legacy data
-        return self.coordinator.data.temp_max
+        return self.coordinator.data.current_weather.temperature
 
     @property
     def native_pressure(self) -> float | None:
@@ -161,32 +126,16 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
     @property
     def native_wind_speed(self) -> float | None:
         """Return the wind speed."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.current_weather:
             return None
-            
-        # Try to get from current weather (new API)
-        if self.coordinator.data.current_weather:
-            return self.coordinator.data.current_weather.wind_speed
-        
-        # Fallback to legacy forecast data
-        if not (current_forecast := self._current_forecast):
-            return None
-        return current_forecast.wind_force
+        return self.coordinator.data.current_weather.wind_speed
 
     @property
     def wind_bearing(self) -> str | None:
         """Return the wind bearing."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.current_weather:
             return None
-            
-        # Try to get from current weather (new API)
-        if self.coordinator.data.current_weather:
-            return self.coordinator.data.current_weather.wind_direction
-        
-        # Fallback to legacy forecast data
-        if not (current_forecast := self._current_forecast):
-            return None
-        return current_forecast.wind_direction
+        return self.coordinator.data.current_weather.wind_direction
 
     async def async_forecast_daily(self) -> list[Forecast] | None:
         """Return the daily forecast."""

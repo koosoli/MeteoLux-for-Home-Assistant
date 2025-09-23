@@ -17,13 +17,18 @@ from .const import (
     DOMAIN,
     CONF_FORECAST_DAYS,
     DEFAULT_FORECAST_DAYS,
-    FORECAST_DAYS_RANGE
+    FORECAST_DAYS_RANGE,
+    CONF_LANGUAGE,
+    DEFAULT_LANGUAGE,
+    LANGUAGES,
 )
+from homeassistant.helpers.selectors import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 
 _LOGGER = logging.getLogger(__name__)
 
 OPTIONS_SCHEMA = vol.Schema({
-    vol.Required(CONF_FORECAST_DAYS, default=DEFAULT_FORECAST_DAYS): vol.In(FORECAST_DAYS_RANGE)
+    vol.Required(CONF_FORECAST_DAYS, default=DEFAULT_FORECAST_DAYS): vol.In(FORECAST_DAYS_RANGE),
+    vol.Required(CONF_LANGUAGE, default=DEFAULT_LANGUAGE): SelectSelector(SelectSelectorConfig(options=LANGUAGES, mode=SelectSelectorMode.DROPDOWN)),
 })
 
 CONFIG_SCHEMA = vol.Schema({vol.Required("dummy", default=True): bool})
@@ -42,7 +47,7 @@ class MeteoluxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            return self.async_create_entry(title="MeteoLux", data={}, options={CONF_FORECAST_DAYS: DEFAULT_FORECAST_DAYS})
+            return self.async_create_entry(title="MeteoLux", data={}, options={CONF_FORECAST_DAYS: DEFAULT_FORECAST_DAYS, CONF_LANGUAGE: DEFAULT_LANGUAGE})
 
         return self.async_show_form(step_id="user")
 
@@ -75,6 +80,12 @@ class MeteoluxOptionsFlowHandler(config_entries.OptionsFlow):
                             CONF_FORECAST_DAYS, DEFAULT_FORECAST_DAYS
                         ),
                     ): vol.In(FORECAST_DAYS_RANGE),
+                    vol.Optional(
+                        CONF_LANGUAGE,
+                        default=self.config_entry.options.get(
+                            CONF_LANGUAGE, DEFAULT_LANGUAGE
+                        ),
+                    ): vol.In(LANGUAGES),
                 }
             ),
         )

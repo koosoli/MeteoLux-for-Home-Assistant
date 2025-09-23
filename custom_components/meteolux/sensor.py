@@ -52,7 +52,7 @@ SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
         key="last_update",
         translation_key="last_update",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda data: data.created,
+        value_fn=lambda data: data.created.isoformat(),
     ),
     MeteoluxSensorEntityDescription(
         key="data_source",

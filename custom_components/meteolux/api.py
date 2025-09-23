@@ -206,16 +206,16 @@ class MeteoluxData:
                 wind_gusts = None
                 wind_data = day_data.get("wind", {})
                 if isinstance(wind_data, dict):
-                    wind_speed = wind_data.get("speed")
+                    wind_speed = _parse_float_from_string(wind_data.get("speed"))
                     wind_direction = wind_data.get("direction")
-                    wind_gusts = wind_data.get("gusts")
+                    wind_gusts = _parse_float_from_string(wind_data.get("gusts"))
                 
                 daily_forecasts.append(DailyForecast(
                     datetime=day_datetime,
                     condition=weather_condition,
                     temperature_max=temp_max,
                     temperature_min=temp_min,
-                    precipitation=day_data.get("rain"),
+                    precipitation=_parse_float_from_string(day_data.get("rain")),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
                     wind_gusts=wind_gusts,
@@ -259,15 +259,15 @@ class MeteoluxData:
                 wind_gusts = None
                 wind_data = hour_data.get("wind", {})
                 if isinstance(wind_data, dict):
-                    wind_speed = wind_data.get("speed")
+                    wind_speed = _parse_float_from_string(wind_data.get("speed"))
                     wind_direction = wind_data.get("direction")
-                    wind_gusts = wind_data.get("gusts")
+                    wind_gusts = _parse_float_from_string(wind_data.get("gusts"))
                 
                 hourly_forecasts.append(HourlyForecast(
                     datetime=hour_datetime,
                     condition=weather_condition,
                     temperature=temp,
-                    precipitation=hour_data.get("rain"),
+                    precipitation=_parse_float_from_string(hour_data.get("rain")),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
                     wind_gusts=wind_gusts,
@@ -358,13 +358,19 @@ def _parse_temp_range(value: str | None) -> tuple[float | None, float | None]:
     return None, None
 
 
-def _parse_precipitation(value: str | None) -> float | None:
-    """Parse precipitation string (e.g., '7-9 l/m²') and return the higher value in mm."""
+def _parse_float_from_string(value: str | None) -> float | None:
+    """Parse a float from a string like '12.3 mm'."""
     if value is None:
         return None
-    cleaned_value = value.split(" ")[0]
-    _, high = _parse_range(cleaned_value)
-    return high
+    try:
+        return float(value.split(" ")[0].replace(",", "."))
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_precipitation(value: str | None) -> float | None:
+    """Parse precipitation string (e.g., '7-9 l/m²') and return the higher value in mm."""
+    return _parse_float_from_string(value)
 
 
 def _parse_wind_force(value: str | None) -> float | None:
@@ -379,11 +385,12 @@ def _parse_wind_force(value: str | None) -> float | None:
 class MeteoluxApiClient:
     """MeteoLux API client."""
 
-    def __init__(self, session: aiohttp.ClientSession, latitude: float, longitude: float):
+    def __init__(self, session: aiohttp.ClientSession, latitude: float, longitude: float, language: str):
         """Initialize the client."""
         self._session = session
         self._latitude = latitude
         self._longitude = longitude
+        self._language = language
 
     async def async_get_data(self) -> MeteoluxData:
         """Get data from the API and parse it into a MeteoluxData object.
@@ -407,7 +414,7 @@ class MeteoluxApiClient:
         """Get data from the new MeteoLux API."""
         data = None
         endpoint_used = None
-        params = {"lat": self._latitude, "long": self._longitude}
+        params = {"lat": self._latitude, "long": self._longitude, "langcode": self._language}
         
         try:
             async with self._session.get(WEATHER_ENDPOINT, params=params) as response:
