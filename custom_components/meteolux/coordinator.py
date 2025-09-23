@@ -21,7 +21,7 @@ class MeteoluxDataUpdateCoordinator(DataUpdateCoordinator[MeteoluxData]):
     """MeteoLux data update coordinator."""
 
     def __init__(
-        self, hass: HomeAssistant, client: Union[MeteoluxApiClient, MeteoluxApiJsonClient]
+        self, hass: HomeAssistant, client: Any
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
