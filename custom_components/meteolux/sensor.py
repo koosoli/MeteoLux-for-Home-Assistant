@@ -64,6 +64,31 @@ SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
     ),
 )
 
+# JSON API specific sensors
+JSON_API_SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
+    MeteoluxSensorEntityDescription(
+        key="sunshine",
+        translation_key="sunshine",
+        native_unit_of_measurement="h",
+        icon="mdi:weather-sunny",
+        value_fn=lambda data: next(
+            (forecast.sunshine for forecast in data.forecasts.values() if forecast.sunshine is not None), 
+            None
+        ),
+        available_fn=lambda data: any(forecast.sunshine is not None for forecast in data.forecasts.values()),
+    ),
+    MeteoluxSensorEntityDescription(
+        key="uv_index",
+        translation_key="uv_index",
+        icon="mdi:sun-wireless",
+        value_fn=lambda data: next(
+            (forecast.uv_index for forecast in data.forecasts.values() if forecast.uv_index is not None), 
+            None
+        ),
+        available_fn=lambda data: any(forecast.uv_index is not None for forecast in data.forecasts.values()),
+    ),
+)
+
 FORECAST_SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
     MeteoluxSensorEntityDescription(
         key="temp_low",
@@ -115,6 +140,11 @@ async def async_setup_entry(
     coordinator: MeteoluxDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = [MeteoluxSensor(coordinator, description) for description in SENSORS]
+
+    # Add JSON API specific sensors if using JSON API
+    data_source = entry.data.get("data_source", "Legacy (CSV)")
+    if data_source == "JSON API":
+        entities.extend([MeteoluxSensor(coordinator, description) for description in JSON_API_SENSORS])
 
     for period in ("morning", "afternoon", "evening"):
         for description in FORECAST_SENSORS:

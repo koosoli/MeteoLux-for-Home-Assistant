@@ -53,10 +53,22 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
             name="MeteoLux",
             manufacturer="MeteoLux",
         )
+    
+    @property
+    def name(self) -> str:
+        """Return the name of the weather entity."""
+        if self.coordinator.data and self.coordinator.data.city:
+            return f"MeteoLux {self.coordinator.data.city}"
+        return "MeteoLux"
 
     @property
     def _current_forecast(self) -> MeteoluxForecast | None:
         """Return the forecast for the current time."""
+        # If we have current weather data from JSON API, use it
+        if self.coordinator.data.current_weather is not None:
+            return self.coordinator.data.current_weather
+            
+        # Fall back to legacy behavior for CSV API
         now = dt_util.now()
         forecasts = self.coordinator.data.forecasts
 
@@ -85,6 +97,10 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
     @property
     def native_temperature(self) -> float | None:
         """Return the temperature."""
+        # Use current weather temperature if available (JSON API)
+        if self.coordinator.data.current_weather is not None:
+            return self.coordinator.data.current_weather.temp_high
+        # Fall back to max temperature (legacy CSV API)
         return self.coordinator.data.temp_max
 
     @property

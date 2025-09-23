@@ -40,6 +40,8 @@ class MeteoluxData:
             "temp_min": _parse_float(raw_data.get("temp_min")),
             "temp_max": _parse_float(raw_data.get("temp_max")),
             "forecasts": {},
+            "city": "Luxembourg",  # Default city for CSV API
+            "current_weather": None,  # CSV API doesn't provide current weather
         }
 
         for i in range(1, 4):  # For morning, afternoon, evening
