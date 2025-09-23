@@ -9,6 +9,16 @@
         "abort": {
             "single_instance_allowed": "Only a single instance of MeteoLux is allowed."
         }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "MeteoLux Options",
+        "data": {
+          "forecast_days": "Number of forecast days"
+        }
+      }
+    }
     },
     "entity": {
         "weather": {
