@@ -4,7 +4,9 @@
 
 This is a custom integration for Home Assistant that provides weather information from [MeteoLux](https://www.meteolux.lu/), the national meteorological service of Luxembourg.
 
-The integration fetches data from the official MeteoLux open data feed, which is updated daily.
+The integration can use two different data sources:
+- A legacy CSV feed from [data.public.lu](https://data.public.lu/en/datasets/meteolux-luxembourg-weather-forecast-for-the-current-day/).
+- A new JSON API from [metapi.ana.lu](https://metapi.ana.lu/api/v1/docs), which provides more detailed and location-specific forecasts.
 
 ## Installation
 
@@ -22,17 +24,22 @@ The integration fetches data from the official MeteoLux open data feed, which is
 1.  Go to **Settings** -> **Devices & Services**.
 2.  Click the **+ Add Integration** button.
 3.  Search for "MeteoLux" and click on it.
-4.  The integration will be added and a weather entity and several sensors will be created. No further configuration is needed.
+4.  You will be asked to choose a data source:
+    - **Legacy (CSV):** This is the original data source, which provides a daily forecast for the whole country.
+    - **JSON API:** This is the new data source, which provides more detailed and location-specific forecasts. If you choose this option, you will be asked to provide your latitude and longitude.
+5.  The integration will be added and a weather entity and several sensors will be created.
 
 ## Provided Entities
 
 ### Weather
 
--   `weather.meteolux`: A weather entity that provides the daily forecast for Luxembourg.
+-   `weather.meteolux_{location}`: A weather entity that provides the daily forecast for the specified location.
 
 ### Sensors
 
 The integration provides the following sensors:
+
+#### Legacy (CSV) Data Source
 
 -   `sensor.meteolux_max_temperature`: The maximum temperature for the day.
 -   `sensor.meteolux_min_temperature`: The minimum temperature for the day.
@@ -40,6 +47,15 @@ The integration provides the following sensors:
 -   `sensor.meteolux_afternoon_precipitation`: The forecasted precipitation for the afternoon.
 -   `sensor.meteolux_evening_precipitation`: The forecasted precipitation for the evening.
 
+#### JSON API Data Source
+
+-   `sensor.meteolux_sunshine`: The number of sunshine hours for the day.
+-   `sensor.meteolux_uv_index`: The UV index for the day.
+
+### Binary Sensor
+
+-   `binary_sensor.meteolux_meteoalarm_alert`: A binary sensor that indicates if there is an active weather alert from [Meteoalarm](https://www.meteoalarm.org/) for Luxembourg. The sensor's attributes contain the details of the alert.
+
 ## Data Source
 
-This integration uses open data provided by the Luxembourg government on the [data.public.lu](https://data.public.lu/en/datasets/meteolux-luxembourg-weather-forecast-for-the-current-day/) portal.
+This integration uses open data provided by the Luxembourg government on the [data.public.lu](https://data.public.lu/en/datasets/meteolux-luxembourg-weather-forecast-for-the-current-day/) portal and the [metapi.ana.lu](https://metapi.ana.lu/api/v1/docs) API. The Meteoalarm data is scraped from the [Meteoalarm website](https://www.meteoalarm.org/).
