@@ -385,12 +385,11 @@ def _parse_wind_force(value: str | None) -> float | None:
 class MeteoluxApiClient:
     """MeteoLux API client."""
 
-    def __init__(self, session: aiohttp.ClientSession, latitude: float, longitude: float, language: str):
+    def __init__(self, session: aiohttp.ClientSession, latitude: float, longitude: float):
         """Initialize the client."""
         self._session = session
         self._latitude = latitude
         self._longitude = longitude
-        self._language = language
 
     async def async_get_data(self) -> MeteoluxData:
         """Get data from the API and parse it into a MeteoluxData object.
@@ -414,7 +413,7 @@ class MeteoluxApiClient:
         """Get data from the new MeteoLux API."""
         data = None
         endpoint_used = None
-        params = {"lat": self._latitude, "long": self._longitude, "langcode": self._language}
+        params = {"lat": self._latitude, "long": self._longitude, "langcode": "en"}
         
         try:
             async with self._session.get(WEATHER_ENDPOINT, params=params) as response:
