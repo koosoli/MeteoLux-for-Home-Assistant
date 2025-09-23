@@ -1,0 +1,91 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "MeteoLux",
+                "description": "This integration provides weather data from MeteoLux, the national meteorological service of Luxembourg. No configuration is required."
+            }
+        },
+        "abort": {
+            "single_instance_allowed": "Only a single instance of MeteoLux is allowed."
+        }
+    },
+    "entity": {
+        "weather": {
+            "meteolux": {
+                "name": "MeteoLux Weather"
+            }
+        },
+        "sensor": {
+            "temp_max": {
+                "name": "Max Temperature"
+            },
+            "temp_min": {
+                "name": "Min Temperature"
+            },
+            "morning_temp_low": {
+                "name": "Morning Low Temperature"
+            },
+            "morning_temp_high": {
+                "name": "Morning High Temperature"
+            },
+            "afternoon_temp_low": {
+                "name": "Afternoon Low Temperature"
+            },
+            "afternoon_temp_high": {
+                "name": "Afternoon High Temperature"
+            },
+            "evening_temp_low": {
+                "name": "Evening Low Temperature"
+            },
+            "evening_temp_high": {
+                "name": "Evening High Temperature"
+            },
+            "morning_precipitation": {
+                "name": "Morning Precipitation"
+            },
+            "afternoon_precipitation": {
+                "name": "Afternoon Precipitation"
+            },
+            "evening_precipitation": {
+                "name": "Evening Precipitation"
+            },
+            "morning_wind_force": {
+                "name": "Morning Wind Speed"
+            },
+            "afternoon_wind_force": {
+                "name": "Afternoon Wind Speed"
+            },
+            "evening_wind_force": {
+                "name": "Evening Wind Speed"
+            },
+            "morning_wind_gusts": {
+                "name": "Morning Wind Gusts"
+            },
+            "afternoon_wind_gusts": {
+                "name": "Afternoon Wind Gusts"
+            },
+            "evening_wind_gusts": {
+                "name": "Evening Wind Gusts"
+            },
+            "morning_wind_direction": {
+                "name": "Morning Wind Direction"
+            },
+            "afternoon_wind_direction": {
+                "name": "Afternoon Wind Direction"
+            },
+            "evening_wind_direction": {
+                "name": "Evening Wind Direction"
+            },
+            "morning_weather": {
+                "name": "Morning Weather Condition"
+            },
+            "afternoon_weather": {
+                "name": "Afternoon Weather Condition"
+            },
+            "evening_weather": {
+                "name": "Evening Weather Condition"
+            }
+        }
+    }
+}
