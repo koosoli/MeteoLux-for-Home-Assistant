@@ -18,7 +18,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .api import Forecast as MeteoluxForecast, DailyForecast, HourlyForecast
-from .const import CONDITION_MAP, DOMAIN, FORECAST_TIMES
+from .const import (
+    CONDITION_MAP,
+    DOMAIN,
+    FORECAST_TIMES,
+    CONF_FORECAST_DAYS,
+    DEFAULT_FORECAST_DAYS,
+)
 from .coordinator import MeteoluxDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -186,7 +192,10 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
         # Use new API data if available
         if self.coordinator.data.daily_forecasts:
             forecasts = []
-            for daily_forecast in self.coordinator.data.daily_forecasts[:7]:  # Max 7 days
+            forecast_days = self.coordinator.config_entry.options.get(
+                CONF_FORECAST_DAYS, DEFAULT_FORECAST_DAYS
+            )
+            for daily_forecast in self.coordinator.data.daily_forecasts[:forecast_days]:
                 forecast = Forecast(
                     datetime=daily_forecast.datetime.isoformat(),
                     condition=_map_condition(daily_forecast.condition),
