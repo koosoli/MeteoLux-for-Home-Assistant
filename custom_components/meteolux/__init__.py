@@ -17,7 +17,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MeteoLux from a config entry."""
     session = async_get_clientsession(hass)
-    client = MeteoluxApiClient(session)
+    client = MeteoluxApiClient(session, hass.config.latitude, hass.config.longitude)
 
     coordinator = MeteoluxDataUpdateCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()

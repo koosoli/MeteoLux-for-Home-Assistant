@@ -122,8 +122,10 @@ class MeteoluxData:
         """Parse API response data into a MeteoluxData object."""
         created = datetime.now()
         
+        forecast_data = api_data.get("forecast", api_data)
+
         # Handle different API response structures
-        current_data = api_data.get("current", {})
+        current_data = forecast_data.get("current", {})
         
         # Parse current weather - handle different possible structures
         current_weather = None
@@ -145,10 +147,15 @@ class MeteoluxData:
                 wind_speed = wind_data.get("speed") or wind_data.get("wind_speed")
                 wind_direction = wind_data.get("direction") or wind_data.get("wind_direction")
             
+
+            temp = current_data.get("temperature")
+            if isinstance(temp, dict):
+                temp = temp.get("temperature")
+
             current_weather = CurrentWeather(
                 datetime=created,
                 condition=weather_condition,
-                temperature=current_data.get("temperature") or current_data.get("temp"),
+                temperature=temp,
                 humidity=current_data.get("humidity"),
                 pressure=current_data.get("pressure") or current_data.get("qnh"),
                 wind_speed=wind_speed,
@@ -158,7 +165,7 @@ class MeteoluxData:
 
         # Parse daily forecasts
         daily_forecasts = []
-        daily_data = api_data.get("daily", [])
+        daily_data = forecast_data.get("daily", [])
         if daily_data:
             for day_data in daily_data:
                 if not day_data:
@@ -179,38 +186,32 @@ class MeteoluxData:
                 
                 # Extract weather condition
                 weather_condition = None
-                if isinstance(day_data.get("weather"), dict):
-                    weather_condition = day_data["weather"].get("description")
-                elif isinstance(day_data.get("weather"), str):
-                    weather_condition = day_data["weather"]
-                elif "condition" in day_data:
-                    weather_condition = day_data["condition"]
+                if isinstance(day_data.get("icon"), dict):
+                    weather_condition = day_data["icon"].get("name")
                 
                 # Extract temperature data
-                temp_max = None
-                temp_min = None
-                temp_data = day_data.get("temperature", {})
-                if isinstance(temp_data, dict):
-                    temp_max = temp_data.get("max") or temp_data.get("temp_max")
-                    temp_min = temp_data.get("min") or temp_data.get("temp_min")
-                else:
-                    temp_max = day_data.get("temp_max") or day_data.get("temperature")
-                    temp_min = day_data.get("temp_min")
+                temp_max = day_data.get("temperatureMax")
+                if isinstance(temp_max, dict):
+                    temp_max = temp_max.get("temperature")
                 
+                temp_min = day_data.get("temperatureMin")
+                if isinstance(temp_min, dict):
+                    temp_min = temp_min.get("temperature")
+
                 # Extract wind data
                 wind_speed = None
                 wind_direction = None
                 wind_data = day_data.get("wind", {})
                 if isinstance(wind_data, dict):
-                    wind_speed = wind_data.get("speed") or wind_data.get("wind_speed")
-                    wind_direction = wind_data.get("direction") or wind_data.get("wind_direction")
+                    wind_speed = wind_data.get("speed")
+                    wind_direction = wind_data.get("direction")
                 
                 daily_forecasts.append(DailyForecast(
                     datetime=day_datetime,
                     condition=weather_condition,
                     temperature_max=temp_max,
                     temperature_min=temp_min,
-                    precipitation=day_data.get("precipitation") or day_data.get("rain"),
+                    precipitation=day_data.get("rain"),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
                     humidity=day_data.get("humidity"),
@@ -219,7 +220,7 @@ class MeteoluxData:
 
         # Parse hourly forecasts
         hourly_forecasts = []
-        hourly_data = api_data.get("hourly", [])
+        hourly_data = forecast_data.get("hourly", [])
         if hourly_data:
             for hour_data in hourly_data:
                 if not hour_data:
@@ -240,26 +241,26 @@ class MeteoluxData:
                 
                 # Extract weather condition
                 weather_condition = None
-                if isinstance(hour_data.get("weather"), dict):
-                    weather_condition = hour_data["weather"].get("description")
-                elif isinstance(hour_data.get("weather"), str):
-                    weather_condition = hour_data["weather"]
-                elif "condition" in hour_data:
-                    weather_condition = hour_data["condition"]
+                if isinstance(hour_data.get("icon"), dict):
+                    weather_condition = hour_data["icon"].get("name")
                 
+                temp = hour_data.get("temperature")
+                if isinstance(temp, dict):
+                    temp = temp.get("temperature")
+
                 # Extract wind data
                 wind_speed = None
                 wind_direction = None
                 wind_data = hour_data.get("wind", {})
                 if isinstance(wind_data, dict):
-                    wind_speed = wind_data.get("speed") or wind_data.get("wind_speed")
-                    wind_direction = wind_data.get("direction") or wind_data.get("wind_direction")
+                    wind_speed = wind_data.get("speed")
+                    wind_direction = wind_data.get("direction")
                 
                 hourly_forecasts.append(HourlyForecast(
                     datetime=hour_datetime,
                     condition=weather_condition,
-                    temperature=hour_data.get("temperature") or hour_data.get("temp"),
-                    precipitation=hour_data.get("precipitation") or hour_data.get("rain"),
+                    temperature=temp,
+                    precipitation=hour_data.get("rain"),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
                     humidity=hour_data.get("humidity"),
@@ -370,9 +371,11 @@ def _parse_wind_force(value: str | None) -> float | None:
 class MeteoluxApiClient:
     """MeteoLux API client."""
 
-    def __init__(self, session: aiohttp.ClientSession):
+    def __init__(self, session: aiohttp.ClientSession, latitude: float, longitude: float):
         """Initialize the client."""
         self._session = session
+        self._latitude = latitude
+        self._longitude = longitude
 
     async def async_get_data(self) -> MeteoluxData:
         """Get data from the API and parse it into a MeteoluxData object.
@@ -396,9 +399,10 @@ class MeteoluxApiClient:
         """Get data from the new MeteoLux API."""
         data = None
         endpoint_used = None
+        params = {"lat": self._latitude, "long": self._longitude}
         
         try:
-            async with self._session.get(WEATHER_ENDPOINT) as response:
+            async with self._session.get(WEATHER_ENDPOINT, params=params) as response:
                 response.raise_for_status()
                 data = await response.json()
                 endpoint_used = WEATHER_ENDPOINT
@@ -406,7 +410,7 @@ class MeteoluxApiClient:
             if err.status == 404:
                 # Try the metapp endpoint instead
                 try:
-                    async with self._session.get(METAPP_WEATHER_ENDPOINT) as response:
+                    async with self._session.get(METAPP_WEATHER_ENDPOINT, params=params) as response:
                         response.raise_for_status()
                         data = await response.json()
                         endpoint_used = METAPP_WEATHER_ENDPOINT
