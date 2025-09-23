@@ -47,6 +47,27 @@
             },
             "temp_min": {
                 "name": "Min Temperature"
+            },
+            "day_temp_max": {
+                "name": "Day {day} Max Temperature"
+            },
+            "day_temp_min": {
+                "name": "Day {day} Min Temperature"
+            },
+            "day_precipitation": {
+                "name": "Day {day} Precipitation"
+            },
+            "day_wind_speed": {
+                "name": "Day {day} Wind Speed"
+            },
+            "day_wind_gusts": {
+                "name": "Day {day} Wind Gusts"
+            },
+            "day_wind_direction": {
+                "name": "Day {day} Wind Direction"
+            },
+            "day_condition": {
+                "name": "Day {day} Condition"
             }
         }
     }

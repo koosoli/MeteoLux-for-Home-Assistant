@@ -28,6 +28,7 @@ class DailyForecast:
     precipitation: float | None
     wind_speed: float | None
     wind_direction: str | None
+    wind_gusts: float | None
     humidity: float | None
     pressure: float | None
 
@@ -42,6 +43,7 @@ class HourlyForecast:
     precipitation: float | None
     wind_speed: float | None
     wind_direction: str | None
+    wind_gusts: float | None
     humidity: float | None
     pressure: float | None
     cloud_coverage: float | None
@@ -201,10 +203,12 @@ class MeteoluxData:
                 # Extract wind data
                 wind_speed = None
                 wind_direction = None
+                wind_gusts = None
                 wind_data = day_data.get("wind", {})
                 if isinstance(wind_data, dict):
                     wind_speed = wind_data.get("speed")
                     wind_direction = wind_data.get("direction")
+                    wind_gusts = wind_data.get("gusts")
                 
                 daily_forecasts.append(DailyForecast(
                     datetime=day_datetime,
@@ -214,6 +218,7 @@ class MeteoluxData:
                     precipitation=day_data.get("rain"),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
+                    wind_gusts=wind_gusts,
                     humidity=day_data.get("humidity"),
                     pressure=day_data.get("pressure") or day_data.get("qnh"),
                 ))
@@ -251,10 +256,12 @@ class MeteoluxData:
                 # Extract wind data
                 wind_speed = None
                 wind_direction = None
+                wind_gusts = None
                 wind_data = hour_data.get("wind", {})
                 if isinstance(wind_data, dict):
                     wind_speed = wind_data.get("speed")
                     wind_direction = wind_data.get("direction")
+                    wind_gusts = wind_data.get("gusts")
                 
                 hourly_forecasts.append(HourlyForecast(
                     datetime=hour_datetime,
@@ -263,6 +270,7 @@ class MeteoluxData:
                     precipitation=hour_data.get("rain"),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
+                    wind_gusts=wind_gusts,
                     humidity=hour_data.get("humidity"),
                     pressure=hour_data.get("pressure") or hour_data.get("qnh"),
                     cloud_coverage=hour_data.get("cloud_coverage") or hour_data.get("clouds"),

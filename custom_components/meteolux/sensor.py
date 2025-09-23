@@ -30,7 +30,7 @@ from .coordinator import MeteoluxDataUpdateCoordinator
 class MeteoluxSensorEntityDescription(SensorEntityDescription):
     """Describes a MeteoLux sensor entity."""
 
-    value_fn: Callable[[MeteoluxData], float | str | None] = None
+    value_fn: Callable[..., float | str | None] = None
     available_fn: Callable[[MeteoluxData], bool] = lambda data: True
 
 
@@ -90,6 +90,59 @@ SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
     ),
 )
 
+FORECAST_SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
+    MeteoluxSensorEntityDescription(
+        key="temp_max",
+        translation_key="day_temp_max",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        value_fn=lambda data, day: data.daily_forecasts[day].temperature_max,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="temp_min",
+        translation_key="day_temp_min",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        value_fn=lambda data, day: data.daily_forecasts[day].temperature_min,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="precipitation",
+        translation_key="day_precipitation",
+        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        device_class=SensorDeviceClass.PRECIPITATION,
+        icon="mdi:weather-rainy",
+        value_fn=lambda data, day: data.daily_forecasts[day].precipitation,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="wind_speed",
+        translation_key="day_wind_speed",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        icon="mdi:weather-windy",
+        value_fn=lambda data, day: data.daily_forecasts[day].wind_speed,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="wind_gusts",
+        translation_key="day_wind_gusts",
+        native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        icon="mdi:weather-windy-variant",
+        value_fn=lambda data, day: data.daily_forecasts[day].wind_gusts,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="wind_direction",
+        translation_key="day_wind_direction",
+        icon="mdi:compass-outline",
+        value_fn=lambda data, day: data.daily_forecasts[day].wind_direction,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="condition",
+        translation_key="day_condition",
+        icon="mdi:card-text-outline",
+        value_fn=lambda data, day: data.daily_forecasts[day].condition,
+    ),
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -100,6 +153,24 @@ async def async_setup_entry(
     coordinator: MeteoluxDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = [MeteoluxSensor(coordinator, description) for description in SENSORS]
+
+    forecast_days = entry.options.get("forecast_days", 7)
+    for day in range(forecast_days):
+        for description in FORECAST_SENSORS:
+            entities.append(
+                MeteoluxDaySensor(
+                    coordinator,
+                    day,
+                    MeteoluxSensorEntityDescription(
+                        key=f"day_{day}_{description.key}",
+                        translation_key=description.translation_key,
+                        native_unit_of_measurement=description.native_unit_of_measurement,
+                        device_class=description.device_class,
+                        icon=description.icon,
+                        value_fn=description.value_fn,
+                    ),
+                )
+            )
 
     async_add_entities(entities)
 
@@ -139,4 +210,36 @@ class MeteoluxSensor(CoordinatorEntity[MeteoluxDataUpdateCoordinator], SensorEnt
             super().available
             and self.coordinator.data is not None
             and self.entity_description.available_fn(self.coordinator.data)
+        )
+
+
+class MeteoluxDaySensor(MeteoluxSensor):
+    """MeteoLux day sensor entity."""
+
+    def __init__(
+        self,
+        coordinator: MeteoluxDataUpdateCoordinator,
+        day: int,
+        description: MeteoluxSensorEntityDescription,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, description)
+        self._day = day
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{description.key}"
+        self._attr_translation_placeholders = {"day": str(day + 1)}
+
+    @property
+    def native_value(self) -> float | str | None:
+        """Return the state of the sensor."""
+        if self.coordinator.data:
+            return self.entity_description.value_fn(self.coordinator.data, self._day)
+        return None
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return (
+            super().available
+            and self.coordinator.data.daily_forecasts is not None
+            and len(self.coordinator.data.daily_forecasts) > self._day
         )
