@@ -190,12 +190,14 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
             return None
 
         # Use new API data if available
-        if self.coordinator.data.daily_forecasts:
+        if self.coordinator.data.daily_forecasts is not None:
             forecasts = []
             forecast_days = self.coordinator.config_entry.options.get(
                 CONF_FORECAST_DAYS, DEFAULT_FORECAST_DAYS
             )
             for daily_forecast in self.coordinator.data.daily_forecasts[:forecast_days]:
+                if not daily_forecast or not daily_forecast.datetime:
+                    continue
                 forecast = Forecast(
                     datetime=daily_forecast.datetime.isoformat(),
                     condition=_map_condition(daily_forecast.condition),
@@ -219,9 +221,11 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
             return None
 
         # Use new API data if available
-        if self.coordinator.data.hourly_forecasts:
+        if self.coordinator.data.hourly_forecasts is not None:
             forecasts = []
             for hourly_forecast in self.coordinator.data.hourly_forecasts[:48]:  # Max 48 hours
+                if not hourly_forecast or not hourly_forecast.datetime:
+                    continue
                 forecast = Forecast(
                     datetime=hourly_forecast.datetime.isoformat(),
                     condition=_map_condition(hourly_forecast.condition),
@@ -237,6 +241,9 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
             return forecasts
 
         # Fallback to legacy data (daily periods)
+        if self.coordinator.data.forecasts is None:
+            return []
+
         forecasts = self.coordinator.data.forecasts
         base_date = self.coordinator.data.created.date()
 
