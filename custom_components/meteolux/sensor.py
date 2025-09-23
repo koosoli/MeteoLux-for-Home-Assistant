@@ -49,6 +49,32 @@ def get_forecast_available_fn(period: str) -> Callable[[MeteoluxData], bool]:
 
 SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
     MeteoluxSensorEntityDescription(
+        key="last_update",
+        translation_key="last_update",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: data.created,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="data_source",
+        translation_key="data_source",
+        value_fn=lambda data: data.data_source,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="api_endpoint",
+        translation_key="api_endpoint",
+        value_fn=lambda data: data.api_endpoint_used,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="daily_forecasts",
+        translation_key="daily_forecasts",
+        value_fn=lambda data: len(data.daily_forecasts) if data.daily_forecasts else 0,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="hourly_forecasts",
+        translation_key="hourly_forecasts",
+        value_fn=lambda data: len(data.hourly_forecasts) if data.hourly_forecasts else 0,
+    ),
+    MeteoluxSensorEntityDescription(
         key="temp_max",
         translation_key="temp_max",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,

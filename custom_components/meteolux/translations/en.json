@@ -27,6 +27,21 @@
             }
         },
         "sensor": {
+            "last_update": {
+                "name": "Last Update"
+            },
+            "data_source": {
+                "name": "Data Source"
+            },
+            "api_endpoint": {
+                "name": "API Endpoint"
+            },
+            "daily_forecasts": {
+                "name": "Daily Forecasts Received"
+            },
+            "hourly_forecasts": {
+                "name": "Hourly Forecasts Received"
+            },
             "temp_max": {
                 "name": "Max Temperature"
             },
