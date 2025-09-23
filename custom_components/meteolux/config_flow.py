@@ -12,7 +12,7 @@ from homeassistant.data_entry_flow import FlowResult
 from .const import DOMAIN
 
 
-class MeteoluxConfigFlow(ConfigFlow, domain=DOMAIN):
+class MeteoluxConfigFlow(ConfigFlow):
     """Handle a config flow for MeteoLux."""
 
     VERSION = 1
