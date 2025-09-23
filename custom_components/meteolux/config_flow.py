@@ -11,6 +11,9 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .const import DOMAIN
 
+DATA_SOURCE_LEGACY = "Legacy (CSV)"
+DATA_SOURCE_JSON = "JSON API"
+
 
 class MeteoluxConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for MeteoLux."""
@@ -25,27 +28,37 @@ class MeteoluxConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
+            data_source = user_input["data_source"]
+            
+            config_data = {
+                "data_source": data_source,
+            }
+            
+            # Only include location data for JSON API
+            if data_source == DATA_SOURCE_JSON:
+                config_data[CONF_LATITUDE] = user_input[CONF_LATITUDE]
+                config_data[CONF_LONGITUDE] = user_input[CONF_LONGITUDE]
+                
             return self.async_create_entry(
-                title="MeteoLux",
-                data={
-                    CONF_LATITUDE: user_input[CONF_LATITUDE],
-                    CONF_LONGITUDE: user_input[CONF_LONGITUDE],
-                },
+                title=f"MeteoLux ({data_source})",
+                data=config_data,
             )
 
         latitude = self.hass.config.latitude
         longitude = self.hass.config.longitude
 
+        schema_dict = {
+            vol.Required("data_source", default=DATA_SOURCE_LEGACY): vol.In([
+                DATA_SOURCE_LEGACY,
+                DATA_SOURCE_JSON,
+            ]),
+        }
+        
+        # Add location fields (will be shown conditionally in UI)
+        schema_dict[vol.Optional(CONF_LATITUDE, default=latitude)] = float
+        schema_dict[vol.Optional(CONF_LONGITUDE, default=longitude)] = float
+
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_LATITUDE, default=latitude
-                    ): float,
-                    vol.Required(
-                        CONF_LONGITUDE, default=longitude
-                    ): float,
-                }
-            ),
+            data_schema=vol.Schema(schema_dict),
         )
