@@ -273,6 +273,12 @@ class MeteoluxData:
                 temp = hour_data.get("temperature")
                 if isinstance(temp, dict):
                     temp = temp.get("temperature")
+                if isinstance(temp, list):
+                    try:
+                        # Take the average of the range if it's a list
+                        temp = sum(temp) / len(temp)
+                    except (TypeError, ZeroDivisionError):
+                        temp = None
 
                 # Extract wind data
                 wind_speed = None
