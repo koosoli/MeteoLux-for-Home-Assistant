@@ -227,16 +227,16 @@ class MeteoluxData:
                 wind_gusts = None
                 wind_data = day_data.get("wind", {})
                 if isinstance(wind_data, dict):
-                    wind_speed = _parse_float_from_string(wind_data.get("speed"))
+                    wind_speed = _parse_api_value(wind_data.get("speed"))
                     wind_direction = wind_data.get("direction")
-                    wind_gusts = _parse_float_from_string(wind_data.get("gusts"))
+                    wind_gusts = _parse_api_value(wind_data.get("gusts"))
                 
                 daily_forecasts.append(DailyForecast(
                     datetime=day_datetime,
                     condition=weather_condition,
                     temperature_max=temp_max,
                     temperature_min=temp_min,
-                    precipitation=_parse_float_from_string(day_data.get("rain")),
+                    precipitation=_parse_api_value(day_data.get("rain")),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
                     wind_gusts=wind_gusts,
@@ -280,15 +280,15 @@ class MeteoluxData:
                 wind_gusts = None
                 wind_data = hour_data.get("wind", {})
                 if isinstance(wind_data, dict):
-                    wind_speed = _parse_float_from_string(wind_data.get("speed"))
+                    wind_speed = _parse_api_value(wind_data.get("speed"))
                     wind_direction = wind_data.get("direction")
-                    wind_gusts = _parse_float_from_string(wind_data.get("gusts"))
+                    wind_gusts = _parse_api_value(wind_data.get("gusts"))
                 
                 hourly_forecasts.append(HourlyForecast(
                     datetime=hour_datetime,
                     condition=weather_condition,
                     temperature=temp,
-                    precipitation=_parse_float_from_string(hour_data.get("rain")),
+                    precipitation=_parse_api_value(hour_data.get("rain")),
                     wind_speed=wind_speed,
                     wind_direction=wind_direction,
                     wind_gusts=wind_gusts,
@@ -426,6 +426,28 @@ def _parse_float_from_string(value: str | None) -> float | None:
         return float(value.split(" ")[0].replace(",", "."))
     except (ValueError, TypeError):
         return None
+
+
+def _parse_api_value(value: str | None) -> float | None:
+    """Parse a value from the API, which can be a single number or a range."""
+    if value is None or value == "":
+        return None
+
+    # Treat value as a string to be safe
+    str_value = str(value)
+
+    # First, try to parse it as a simple float
+    try:
+        return float(str_value.split(" ")[0].replace(",", "."))
+    except (ValueError, TypeError):
+        # If that fails, it might be a range (e.g., "5-10")
+        try:
+            cleaned_value = str_value.split(" ")[0]
+            _, high = _parse_range(cleaned_value)
+            return high
+        except (ValueError, TypeError, IndexError):
+            _LOGGER.warning("Could not parse value: %s", value)
+            return None
 
 
 def _parse_precipitation(value: str | None) -> float | None:
