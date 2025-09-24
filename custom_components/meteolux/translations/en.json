@@ -48,6 +48,9 @@
             "temp_min": {
                 "name": "Min Temperature"
             },
+            "vigilance_level": {
+                "name": "Vigilance Level"
+            },
             "day_temp_max": {
                 "name": "Day {day} Max Temperature"
             },

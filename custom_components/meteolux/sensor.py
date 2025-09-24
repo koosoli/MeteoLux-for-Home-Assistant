@@ -31,7 +31,50 @@ class MeteoluxSensorEntityDescription(SensorEntityDescription):
     """Describes a MeteoLux sensor entity."""
 
     value_fn: Callable[..., float | str | None] = None
+    attributes_fn: Callable[[MeteoluxData], dict[str, Any]] | None = None
     available_fn: Callable[[MeteoluxData], bool] = lambda data: True
+
+
+def _get_vigilance_level(data: MeteoluxData) -> str | int:
+    """Get the highest vigilance level."""
+    if not data.vigilances:
+        return "none"
+
+    highest_level = 0
+    for v in data.vigilances:
+        if v.level and v.level > highest_level:
+            highest_level = v.level
+
+    return highest_level if highest_level > 0 else "none"
+
+
+def _get_vigilance_attributes(data: MeteoluxData) -> dict[str, Any]:
+    """Get the attributes for the vigilance sensor."""
+    if not data.vigilances:
+        return {}
+
+    highest_vigilance = None
+    highest_level = 0
+    for v in data.vigilances:
+        if v.level and v.level > highest_level:
+            highest_level = v.level
+            highest_vigilance = v
+
+    if not highest_vigilance:
+        return {}
+
+    return {
+        "description": highest_vigilance.description,
+        "start_time": highest_vigilance.datetime_start.isoformat()
+        if highest_vigilance.datetime_start
+        else None,
+        "end_time": highest_vigilance.datetime_end.isoformat()
+        if highest_vigilance.datetime_end
+        else None,
+        "type": highest_vigilance.type,
+        "region": highest_vigilance.region,
+        "active_warnings": len(data.vigilances),
+    }
 
 
 def get_forecast_value_fn(period: str, key: str) -> Callable[[MeteoluxData], Any]:
@@ -87,6 +130,14 @@ SENSORS: tuple[MeteoluxSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         value_fn=lambda data: data.temp_min,
+    ),
+    MeteoluxSensorEntityDescription(
+        key="vigilance_level",
+        translation_key="vigilance_level",
+        icon="mdi:alert-outline",
+        value_fn=_get_vigilance_level,
+        attributes_fn=_get_vigilance_attributes,
+        available_fn=lambda data: data.vigilances is not None,
     ),
 )
 
@@ -209,6 +260,13 @@ class MeteoluxSensor(CoordinatorEntity[MeteoluxDataUpdateCoordinator], SensorEnt
         """Return the state of the sensor."""
         if self.coordinator.data:
             return self.entity_description.value_fn(self.coordinator.data)
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return the state attributes."""
+        if self.coordinator.data and self.entity_description.attributes_fn:
+            return self.entity_description.attributes_fn(self.coordinator.data)
         return None
 
     @property

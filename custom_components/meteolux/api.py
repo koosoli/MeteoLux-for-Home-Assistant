@@ -64,6 +64,19 @@ class CurrentWeather:
 
 
 @dataclass
+class Vigilance:
+    """Class for holding vigilance data."""
+
+    datetime_start: datetime | None
+    datetime_end: datetime | None
+    level: int | None
+    type: int | None
+    group: int | None
+    region: str | None
+    description: str | None
+
+
+@dataclass
 class MeteoluxData:
     """Class for holding MeteoLux data."""
 
@@ -74,6 +87,7 @@ class MeteoluxData:
     current_weather: CurrentWeather | None = None
     daily_forecasts: list[DailyForecast] | None = None
     hourly_forecasts: list[HourlyForecast] | None = None
+    vigilances: list[Vigilance] | None = None
     data_source: str | None = None
     api_endpoint_used: str | None = None
 
@@ -90,6 +104,7 @@ class MeteoluxData:
             "temp_max": _parse_float(raw_data.get("temp_max")),
             "forecasts": {},
             "data_source": "CSV",
+            "vigilances": None,
         }
 
         for i in range(1, 4):  # For morning, afternoon, evening
@@ -282,6 +297,44 @@ class MeteoluxData:
                     cloud_coverage=hour_data.get("cloud_coverage") or hour_data.get("clouds"),
                 ))
 
+        # Parse vigilances
+        vigilances = []
+        vigilance_data = api_data.get("vigilances", [])
+        if vigilance_data:
+            for vigilance_item in vigilance_data:
+                if not vigilance_item:
+                    continue
+
+                start_time = None
+                if "datetimeStart" in vigilance_item:
+                    try:
+                        start_time = datetime.fromisoformat(
+                            str(vigilance_item["datetimeStart"]).replace("Z", "+00:00")
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+                end_time = None
+                if "datetimeEnd" in vigilance_item:
+                    try:
+                        end_time = datetime.fromisoformat(
+                            str(vigilance_item["datetimeEnd"]).replace("Z", "+00:00")
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+                vigilances.append(
+                    Vigilance(
+                        datetime_start=start_time,
+                        datetime_end=end_time,
+                        level=vigilance_item.get("level"),
+                        type=vigilance_item.get("type"),
+                        group=vigilance_item.get("group"),
+                        region=vigilance_item.get("region"),
+                        description=vigilance_item.get("description"),
+                    )
+                )
+
         # Determine temperature range from daily forecasts if available
         temp_min = None
         temp_max = None
@@ -303,6 +356,7 @@ class MeteoluxData:
             current_weather=current_weather,
             daily_forecasts=daily_forecasts,
             hourly_forecasts=hourly_forecasts,
+            vigilances=vigilances,
             data_source="API",
             api_endpoint_used=endpoint_used,
         )
