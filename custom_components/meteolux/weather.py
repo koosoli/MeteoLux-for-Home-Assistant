@@ -165,51 +165,21 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
                 forecasts.append(forecast)
             return forecasts
 
-        # Fallback to legacy data (daily periods)
-        return await self.async_forecast_hourly()
-
-    async def async_forecast_hourly(self) -> list[Forecast] | None:
-        """Return the hourly forecast."""
-        if not self.coordinator.data:
+        # Fallback to legacy CSV data
+        if self.coordinator.data.forecasts is None:
             return None
 
-        # Use new API data if available
-        if self.coordinator.data.hourly_forecasts is not None:
-            forecasts = []
-            for hourly_forecast in self.coordinator.data.hourly_forecasts[:48]:  # Max 48 hours
-                if not hourly_forecast or not hourly_forecast.datetime:
-                    continue
-                forecast = Forecast(
-                    datetime=hourly_forecast.datetime.isoformat(),
-                    condition=_map_condition(hourly_forecast.condition),
-                    native_temperature=hourly_forecast.temperature,
-                    native_precipitation=hourly_forecast.precipitation,
-                    wind_bearing=hourly_forecast.wind_direction,
-                    native_wind_speed=hourly_forecast.wind_speed,
-                    humidity=hourly_forecast.humidity,
-                    native_pressure=hourly_forecast.pressure,
-                    cloud_coverage=hourly_forecast.cloud_coverage,
-                )
-                forecasts.append(forecast)
-            return forecasts
-
-        # Fallback to legacy data (daily periods)
-        if self.coordinator.data.forecasts is None:
-            return []
-
-        forecasts = self.coordinator.data.forecasts
+        forecasts_data = self.coordinator.data.forecasts
         base_date = self.coordinator.data.created.date()
-
-        daily_forecasts = []
+        daily_forecasts_legacy = []
         for period, forecast_time in FORECAST_TIMES.items():
-            if period_data := forecasts.get(period):
+            if period_data := forecasts_data.get(period):
                 if not period_data.is_displayed:
                     continue
 
                 forecast_dt = datetime.combine(
                     base_date, forecast_time, tzinfo=dt_util.get_default_timezone()
                 )
-
                 forecast = Forecast(
                     datetime=forecast_dt.isoformat(),
                     condition=CONDITION_MAP.get(period_data.weather, "unknown"),
@@ -219,6 +189,29 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
                     wind_bearing=period_data.wind_direction,
                     native_wind_speed=period_data.wind_force,
                 )
-                daily_forecasts.append(forecast)
+                daily_forecasts_legacy.append(forecast)
+        return daily_forecasts_legacy
 
-        return daily_forecasts
+    async def async_forecast_hourly(self) -> list[Forecast] | None:
+        """Return the hourly forecast."""
+        if not self.coordinator.data or not self.coordinator.data.hourly_forecasts:
+            return None
+
+        # Use new API data if available
+        forecasts = []
+        for hourly_forecast in self.coordinator.data.hourly_forecasts[:48]:  # Max 48 hours
+            if not hourly_forecast or not hourly_forecast.datetime:
+                continue
+            forecast = Forecast(
+                datetime=hourly_forecast.datetime.isoformat(),
+                condition=_map_condition(hourly_forecast.condition),
+                native_temperature=hourly_forecast.temperature,
+                native_precipitation=hourly_forecast.precipitation,
+                wind_bearing=hourly_forecast.wind_direction,
+                native_wind_speed=hourly_forecast.wind_speed,
+                humidity=hourly_forecast.humidity,
+                native_pressure=hourly_forecast.pressure,
+                cloud_coverage=hourly_forecast.cloud_coverage,
+            )
+            forecasts.append(forecast)
+        return forecasts
