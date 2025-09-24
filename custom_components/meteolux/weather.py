@@ -194,12 +194,21 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
 
     async def async_forecast_hourly(self) -> list[Forecast] | None:
         """Return the hourly forecast."""
+        _LOGGER.debug("Fetching hourly forecast")
         if not self.coordinator.data or not self.coordinator.data.hourly_forecasts:
+            _LOGGER.debug("No hourly forecast data available in coordinator")
             return None
+
+        _LOGGER.debug(
+            "Processing %s hourly forecasts from coordinator",
+            len(self.coordinator.data.hourly_forecasts),
+        )
 
         # Use new API data if available
         forecasts = []
-        for hourly_forecast in self.coordinator.data.hourly_forecasts[:48]:  # Max 48 hours
+        for i, hourly_forecast in enumerate(
+            self.coordinator.data.hourly_forecasts[:48]
+        ):  # Max 48 hours
             if not hourly_forecast or not hourly_forecast.datetime:
                 continue
             forecast = Forecast(
@@ -213,5 +222,11 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
                 native_pressure=hourly_forecast.pressure,
                 cloud_coverage=hourly_forecast.cloud_coverage,
             )
+            # Log the first processed forecast for debugging
+            if i == 0:
+                _LOGGER.debug("First processed hourly forecast item: %s", forecast)
+
             forecasts.append(forecast)
+
+        _LOGGER.debug("Returning %s processed hourly forecasts", len(forecasts))
         return forecasts
