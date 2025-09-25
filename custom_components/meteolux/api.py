@@ -137,12 +137,20 @@ class MeteoluxData:
     @classmethod
     def from_api_response(cls, api_data: dict[str, Any], endpoint_used: str) -> Self:
         """Parse API response data into a MeteoluxData object."""
-        created = datetime.now()
-        
         forecast_data = api_data.get("forecast", api_data)
-
-        # Handle different API response structures
         current_data = forecast_data.get("current", {})
+
+        # Determine the creation timestamp
+        created = datetime.now()
+        timestamp_str = current_data.get("datetime") or current_data.get("date")
+        if timestamp_str:
+            try:
+                created = datetime.fromisoformat(str(timestamp_str).replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                _LOGGER.warning(
+                    "Could not parse timestamp '%s', falling back to current time",
+                    timestamp_str,
+                )
         
         # Parse current weather - handle different possible structures
         current_weather = None
@@ -502,9 +510,15 @@ class MeteoluxApiClient:
         data = None
         endpoint_used = None
         params = {"lat": self._latitude, "long": self._longitude, "langcode": "en"}
+        headers = {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        }
         
         try:
-            async with self._session.get(WEATHER_ENDPOINT, params=params) as response:
+            async with self._session.get(
+                WEATHER_ENDPOINT, params=params, headers=headers
+            ) as response:
                 response.raise_for_status()
                 data = await response.json()
                 endpoint_used = WEATHER_ENDPOINT
@@ -512,7 +526,9 @@ class MeteoluxApiClient:
             if err.status == 404:
                 # Try the metapp endpoint instead
                 try:
-                    async with self._session.get(METAPP_WEATHER_ENDPOINT, params=params) as response:
+                    async with self._session.get(
+                        METAPP_WEATHER_ENDPOINT, params=params, headers=headers
+                    ) as response:
                         response.raise_for_status()
                         data = await response.json()
                         endpoint_used = METAPP_WEATHER_ENDPOINT
