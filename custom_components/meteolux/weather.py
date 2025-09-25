@@ -70,7 +70,11 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_precipitation_unit = UnitOfPrecipitationDepth.MILLIMETERS
     _attr_native_wind_speed_unit = UnitOfSpeed.KILOMETERS_PER_HOUR
-    _attr_supported_features = WeatherEntityFeature.FORECAST_HOURLY | WeatherEntityFeature.FORECAST_DAILY
+    _attr_supported_features = (
+        WeatherEntityFeature.FORECAST_HOURLY
+        | WeatherEntityFeature.FORECAST_DAILY
+        | WeatherEntityFeature.FORECAST_TEMP_HIGH_LOW
+    )
 
     def __init__(self, coordinator: MeteoluxDataUpdateCoordinator) -> None:
         """Initialize the weather entity."""
@@ -136,6 +140,20 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
         if not self.coordinator.data or not self.coordinator.data.current_weather:
             return None
         return self.coordinator.data.current_weather.wind_direction
+
+    @property
+    def native_forecast_temp_high(self) -> float | None:
+        """Return the high temperature of the current day."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.temp_max
+
+    @property
+    def native_forecast_temp_low(self) -> float | None:
+        """Return the low temperature of the current day."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.temp_min
 
     async def async_forecast_daily(self) -> list[Forecast] | None:
         """Return the daily forecast."""
