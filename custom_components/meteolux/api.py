@@ -254,30 +254,26 @@ class MeteoluxData:
             for day_data in daily_data:
                 if not day_data:
                     continue
-                
+
                 # Handle datetime parsing
                 day_datetime = created
-                if "datetime" in day_data:
+                timestamp_str = day_data.get("datetime") or day_data.get("date")
+                if timestamp_str:
                     try:
-                        day_datetime = datetime.fromisoformat(str(day_data["datetime"]).replace("Z", "+00:00"))
+                        day_datetime = datetime.fromisoformat(str(timestamp_str))
                     except (ValueError, TypeError):
                         day_datetime = created + timedelta(days=len(daily_forecasts))
-                elif "date" in day_data:
-                    try:
-                        day_datetime = datetime.fromisoformat(str(day_data["date"]).replace("Z", "+00:00"))
-                    except (ValueError, TypeError):
-                        day_datetime = created + timedelta(days=len(daily_forecasts))
-                
+
                 # Extract weather condition
                 weather_condition = None
                 if isinstance(day_data.get("icon"), dict):
                     weather_condition = day_data["icon"].get("name")
-                
+
                 # Extract temperature data
                 temp_max = day_data.get("temperatureMax")
                 if isinstance(temp_max, dict):
                     temp_max = temp_max.get("temperature")
-                
+
                 temp_min = day_data.get("temperatureMin")
                 if isinstance(temp_min, dict):
                     temp_min = temp_min.get("temperature")
@@ -291,19 +287,21 @@ class MeteoluxData:
                     wind_speed = _parse_api_value(wind_data.get("speed"))
                     wind_direction = wind_data.get("direction")
                     wind_gusts = _parse_api_value(wind_data.get("gusts"))
-                
-                daily_forecasts.append(DailyForecast(
-                    datetime=day_datetime,
-                    condition=weather_condition,
-                    temperature_max=temp_max,
-                    temperature_min=temp_min,
-                    precipitation=_parse_api_value(day_data.get("rain")),
-                    wind_speed=wind_speed,
-                    wind_direction=wind_direction,
-                    wind_gusts=wind_gusts,
-                    humidity=day_data.get("humidity"),
-                    pressure=day_data.get("pressure") or day_data.get("qnh"),
-                ))
+
+                daily_forecasts.append(
+                    DailyForecast(
+                        datetime=day_datetime,
+                        condition=weather_condition,
+                        temperature_max=temp_max,
+                        temperature_min=temp_min,
+                        precipitation=_parse_api_value(day_data.get("rain")),
+                        wind_speed=wind_speed,
+                        wind_direction=wind_direction,
+                        wind_gusts=wind_gusts,
+                        humidity=day_data.get("humidity"),
+                        pressure=day_data.get("pressure") or day_data.get("qnh"),
+                    )
+                )
 
         # Parse hourly forecasts
         hourly_forecasts = []
@@ -312,25 +310,23 @@ class MeteoluxData:
             for hour_data in hourly_data:
                 if not hour_data:
                     continue
-                
+
                 # Handle datetime parsing
                 hour_datetime = created
-                if "datetime" in hour_data:
+                timestamp_str = hour_data.get("datetime") or hour_data.get("date")
+                if timestamp_str:
                     try:
-                        hour_datetime = datetime.fromisoformat(str(hour_data["datetime"]).replace("Z", "+00:00"))
+                        hour_datetime = datetime.fromisoformat(str(timestamp_str))
                     except (ValueError, TypeError):
-                        hour_datetime = created + timedelta(hours=len(hourly_forecasts))
-                elif "date" in hour_data:
-                    try:
-                        hour_datetime = datetime.fromisoformat(str(hour_data["date"]).replace("Z", "+00:00"))
-                    except (ValueError, TypeError):
-                        hour_datetime = created + timedelta(hours=len(hourly_forecasts))
-                
+                        hour_datetime = created + timedelta(
+                            hours=len(hourly_forecasts)
+                        )
+
                 # Extract weather condition
                 weather_condition = None
                 if isinstance(hour_data.get("icon"), dict):
                     weather_condition = hour_data["icon"].get("name")
-                
+
                 temp = hour_data.get("temperature")
                 if isinstance(temp, dict):
                     temp = temp.get("temperature")
@@ -350,19 +346,69 @@ class MeteoluxData:
                     wind_speed = _parse_api_value(wind_data.get("speed"))
                     wind_direction = wind_data.get("direction")
                     wind_gusts = _parse_api_value(wind_data.get("gusts"))
-                
-                hourly_forecasts.append(HourlyForecast(
-                    datetime=hour_datetime,
-                    condition=weather_condition,
-                    temperature=temp,
-                    precipitation=_parse_api_value(hour_data.get("rain")),
-                    wind_speed=wind_speed,
-                    wind_direction=wind_direction,
-                    wind_gusts=wind_gusts,
-                    humidity=hour_data.get("humidity"),
-                    pressure=hour_data.get("pressure") or hour_data.get("qnh"),
-                    cloud_coverage=hour_data.get("cloud_coverage") or hour_data.get("clouds"),
-                ))
+
+                hourly_forecasts.append(
+                    HourlyForecast(
+                        datetime=hour_datetime,
+                        condition=weather_condition,
+                        temperature=temp,
+                        precipitation=_parse_api_value(hour_data.get("rain")),
+                        wind_speed=wind_speed,
+                        wind_direction=wind_direction,
+                        wind_gusts=wind_gusts,
+                        humidity=hour_data.get("humidity"),
+                        pressure=hour_data.get("pressure") or hour_data.get("qnh"),
+                        cloud_coverage=hour_data.get("cloud_coverage")
+                        or hour_data.get("clouds"),
+                    )
+                )
+
+        # Add today's forecast to the daily forecasts list
+        if hourly_forecasts and current_weather:
+            today_str = now.strftime("%Y-%m-%d")
+            today_hourly_forecasts = [
+                f
+                for f in hourly_forecasts
+                if f.datetime.strftime("%Y-%m-%d") == today_str
+            ]
+
+            if today_hourly_forecasts:
+                # Calculate temperature range
+                today_hourly_temps = [
+                    f.temperature
+                    for f in today_hourly_forecasts
+                    if f.temperature is not None
+                ]
+                today_temp_max = max(today_hourly_temps) if today_hourly_temps else None
+                today_temp_min = min(today_hourly_temps) if today_hourly_temps else None
+
+                # Calculate total precipitation
+                today_hourly_precip = [
+                    f.precipitation
+                    for f in today_hourly_forecasts
+                    if f.precipitation is not None
+                ]
+                total_precipitation = (
+                    sum(today_hourly_precip) if today_hourly_precip else 0.0
+                )
+
+                today_forecast = DailyForecast(
+                    datetime=now.replace(hour=0, minute=0, second=0, microsecond=0),
+                    condition=current_weather.condition,
+                    temperature_max=today_temp_max,
+                    temperature_min=today_temp_min,
+                    precipitation=total_precipitation,
+                    wind_speed=current_weather.wind_speed,
+                    wind_direction=current_weather.wind_direction,
+                    wind_gusts=None,  # Not available from hourly data
+                    humidity=current_weather.humidity,
+                    pressure=current_weather.pressure,
+                )
+
+                # Prepend today's forecast, ensuring no duplicates
+                if not any(f.datetime.date() == now.date() for f in daily_forecasts):
+                    daily_forecasts.insert(0, today_forecast)
+                    _LOGGER.debug(f"Added today's forecast: {today_forecast}")
 
         # Parse vigilances
         vigilances = []
@@ -376,7 +422,7 @@ class MeteoluxData:
                 if "datetimeStart" in vigilance_item:
                     try:
                         start_time = datetime.fromisoformat(
-                            str(vigilance_item["datetimeStart"]).replace("Z", "+00:00")
+                            str(vigilance_item["datetimeStart"])
                         )
                     except (ValueError, TypeError):
                         pass
@@ -385,7 +431,7 @@ class MeteoluxData:
                 if "datetimeEnd" in vigilance_item:
                     try:
                         end_time = datetime.fromisoformat(
-                            str(vigilance_item["datetimeEnd"]).replace("Z", "+00:00")
+                            str(vigilance_item["datetimeEnd"])
                         )
                     except (ValueError, TypeError):
                         pass
@@ -406,8 +452,16 @@ class MeteoluxData:
         temp_min = None
         temp_max = None
         if daily_forecasts:
-            temps_min = [f.temperature_min for f in daily_forecasts if f.temperature_min is not None]
-            temps_max = [f.temperature_max for f in daily_forecasts if f.temperature_max is not None]
+            temps_min = [
+                f.temperature_min
+                for f in daily_forecasts
+                if f.temperature_min is not None
+            ]
+            temps_max = [
+                f.temperature_max
+                for f in daily_forecasts
+                if f.temperature_max is not None
+            ]
             if temps_min:
                 temp_min = min(temps_min)
             if temps_max:

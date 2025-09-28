@@ -137,6 +137,27 @@ class MeteoluxWeather(CoordinatorEntity[MeteoluxDataUpdateCoordinator], WeatherE
             return None
         return self.coordinator.data.current_weather.wind_direction
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        if (
+            not self.coordinator.data
+            or not self.coordinator.data.daily_forecasts
+            or not self.coordinator.data.daily_forecasts[0]
+        ):
+            return {}
+
+        today_forecast = self.coordinator.data.daily_forecasts[0]
+        if today_forecast.datetime.date() != datetime.now().date():
+            return {}
+
+        return {
+            "today_condition": today_forecast.condition,
+            "today_temp_max": today_forecast.temperature_max,
+            "today_temp_min": today_forecast.temperature_min,
+            "today_precipitation": today_forecast.precipitation,
+        }
+
     async def async_forecast_daily(self) -> list[Forecast] | None:
         """Return the daily forecast."""
         if not self.coordinator.data:
