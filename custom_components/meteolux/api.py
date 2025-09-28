@@ -138,61 +138,122 @@ class MeteoluxData:
     def from_api_response(cls, api_data: dict[str, Any], endpoint_used: str) -> Self:
         """Parse API response data into a MeteoluxData object."""
         forecast_data = api_data.get("forecast", api_data)
-        current_data = forecast_data.get("current", {})
+        history_data = api_data.get("data", {}).get("history")
+        now = datetime.now()
 
-        # Determine the creation timestamp
-        created = datetime.now()
-        timestamp_str = current_data.get("datetime") or current_data.get("date")
-        if timestamp_str:
-            try:
-                created = datetime.fromisoformat(str(timestamp_str).replace("Z", "+00:00"))
-            except (ValueError, TypeError):
-                _LOGGER.warning(
-                    "Could not parse timestamp '%s', falling back to current time",
-                    timestamp_str,
-                )
-        
-        # Parse current weather - handle different possible structures
+        created = now  # Default value for created timestamp
         current_weather = None
-        if current_data:
-            # Extract weather condition from various possible formats
-            weather_condition = None
-            if isinstance(current_data.get("weather"), dict):
-                weather_condition = (
-                    current_data["weather"].get("condition")
-                    or current_data["weather"].get("description")
+
+        # Try to get current weather from history first, as it's more reliable
+        if history_data and isinstance(history_data, list):
+            try:
+                # Get the latest entry from history that is not in the future
+                _LOGGER.debug(f"Now: {now}")
+                valid_history = []
+                for e in history_data:
+                    if "date" in e:
+                        try:
+                            entry_dt = datetime.fromisoformat(str(e["date"]))
+                            if entry_dt <= now:
+                                valid_history.append(e)
+                        except (ValueError, TypeError):
+                            _LOGGER.warning(f"Could not parse history date: {e['date']}")
+
+                _LOGGER.debug(f"Found {len(valid_history)} valid history entries.")
+
+                if valid_history:
+                    latest_history = max(valid_history, key=lambda x: x["date"])
+                    _LOGGER.debug(f"Latest history entry: {latest_history}")
+                    history_dt = datetime.fromisoformat(str(latest_history["date"]))
+
+                    current_weather = CurrentWeather(
+                        datetime=history_dt,
+                        temperature=latest_history.get("meanTemp"),
+                        condition=None,  # History does not provide condition
+                        humidity=None,  # Or humidity
+                        pressure=None,  # Or pressure
+                        wind_speed=None,
+                        wind_direction=None,
+                        visibility=None,
+                    )
+                    created = history_dt
+                    _LOGGER.debug("Using recent history entry for current weather.")
+            except (ValueError, TypeError, IndexError):
+                _LOGGER.warning(
+                    "Could not parse current weather from history data.", exc_info=True
                 )
-            elif isinstance(current_data.get("weather"), str):
-                weather_condition = current_data["weather"]
-            elif "condition" in current_data:
-                weather_condition = current_data["condition"]
-            
-            if not weather_condition and isinstance(current_data.get("icon"), dict):
-                weather_condition = current_data["icon"].get("name")
 
-            # Extract wind data
-            wind_speed = None
-            wind_direction = None
-            wind_data = current_data.get("wind", {})
-            if isinstance(wind_data, dict):
-                wind_speed = wind_data.get("speed") or wind_data.get("wind_speed")
-                wind_direction = wind_data.get("direction") or wind_data.get("wind_direction")
-            
-
-            temp = current_data.get("temperature")
-            if isinstance(temp, dict):
-                temp = temp.get("temperature")
-
-            current_weather = CurrentWeather(
-                datetime=created,
-                condition=weather_condition,
-                temperature=temp,
-                humidity=current_data.get("humidity"),
-                pressure=current_data.get("pressure") or current_data.get("qnh"),
-                wind_speed=wind_speed,
-                wind_direction=wind_direction,
-                visibility=current_data.get("visibility"),
+        # If history didn't yield current weather, fall back to the 'current' object
+        if not current_weather:
+            _LOGGER.debug(
+                "History data not available or stale, falling back to 'current' object."
             )
+            current_data = forecast_data.get("current", {})
+            if current_data:
+                timestamp_str = current_data.get("datetime") or current_data.get("date")
+                if timestamp_str:
+                    try:
+                        current_dt = datetime.fromisoformat(
+                            str(timestamp_str).replace("Z", "+00:00")
+                        )
+
+                        # Validate that the data is not from the future
+                        if current_dt > now + timedelta(hours=1):
+                            _LOGGER.warning(
+                                "API's 'current' weather data is from the future (%s), discarding it.",
+                                current_dt,
+                            )
+                        else:
+                            # Data is valid, parse it
+                            weather_condition = None
+                            if isinstance(current_data.get("weather"), dict):
+                                weather_condition = (
+                                    current_data["weather"].get("condition")
+                                    or current_data["weather"].get("description")
+                                )
+                            elif isinstance(current_data.get("weather"), str):
+                                weather_condition = current_data["weather"]
+                            elif "condition" in current_data:
+                                weather_condition = current_data["condition"]
+
+                            if not weather_condition and isinstance(
+                                current_data.get("icon"), dict
+                            ):
+                                weather_condition = current_data["icon"].get("name")
+
+                            wind_speed = None
+                            wind_direction = None
+                            wind_data = current_data.get("wind", {})
+                            if isinstance(wind_data, dict):
+                                wind_speed = _parse_api_value(
+                                    wind_data.get("speed")
+                                    or wind_data.get("wind_speed")
+                                )
+                                wind_direction = wind_data.get(
+                                    "direction"
+                                ) or wind_data.get("wind_direction")
+
+                            temp = current_data.get("temperature")
+                            if isinstance(temp, dict):
+                                temp = temp.get("temperature")
+
+                            created = current_dt
+                            current_weather = CurrentWeather(
+                                datetime=created,
+                                condition=weather_condition,
+                                temperature=temp,
+                                humidity=current_data.get("humidity"),
+                                pressure=current_data.get("pressure")
+                                or current_data.get("qnh"),
+                                wind_speed=wind_speed,
+                                wind_direction=wind_direction,
+                                visibility=current_data.get("visibility"),
+                            )
+
+                    except (ValueError, TypeError):
+                        _LOGGER.warning(
+                            "Could not parse 'current' timestamp '%s'", timestamp_str
+                        )
 
         # Parse daily forecasts
         daily_forecasts = []
@@ -515,25 +576,31 @@ class MeteoluxApiClient:
             "Pragma": "no-cache",
         }
         
+        # Prioritize METAPP_WEATHER_ENDPOINT as it seems more stable
         try:
             async with self._session.get(
-                WEATHER_ENDPOINT, params=params, headers=headers
+                METAPP_WEATHER_ENDPOINT, params=params, headers=headers
             ) as response:
                 response.raise_for_status()
                 data = await response.json()
-                endpoint_used = WEATHER_ENDPOINT
+                endpoint_used = METAPP_WEATHER_ENDPOINT
         except ClientResponseError as err:
             if err.status == 404:
-                # Try the metapp endpoint instead
+                _LOGGER.warning(
+                    "METAPP endpoint not found, falling back to WEATHER endpoint."
+                )
+                # Try the main weather endpoint instead
                 try:
                     async with self._session.get(
-                        METAPP_WEATHER_ENDPOINT, params=params, headers=headers
+                        WEATHER_ENDPOINT, params=params, headers=headers
                     ) as response:
                         response.raise_for_status()
                         data = await response.json()
-                        endpoint_used = METAPP_WEATHER_ENDPOINT
-                except ClientResponseError as metapp_err:
-                    raise MeteoluxApiClientError(f"Both API endpoints failed: {err.status}, {metapp_err.status}") from metapp_err
+                        endpoint_used = WEATHER_ENDPOINT
+                except ClientResponseError as weather_err:
+                    raise MeteoluxApiClientError(
+                        f"Both API endpoints failed: {err.status}, {weather_err.status}"
+                    ) from weather_err
             else:
                 raise MeteoluxApiClientError(f"HTTP error: {err.status}") from err
         except (ClientConnectorError, asyncio.TimeoutError) as err:
