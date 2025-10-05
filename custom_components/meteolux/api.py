@@ -6,7 +6,7 @@ import csv
 import io
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Self
 
 import aiohttp
@@ -140,7 +140,7 @@ class MeteoluxData:
         forecast_data = api_data.get("forecast", api_data)
         history_data = api_data.get("data", {}).get("history")
         current_data = forecast_data.get("current", {})
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         created = now
         current_weather = None
@@ -435,6 +435,11 @@ class MeteoluxData:
                         )
                     except (ValueError, TypeError):
                         pass
+
+                # Skip expired warnings
+                if end_time and end_time < now:
+                    _LOGGER.debug(f"Skipping expired vigilance warning: {vigilance_item}")
+                    continue
 
                 vigilances.append(
                     Vigilance(
