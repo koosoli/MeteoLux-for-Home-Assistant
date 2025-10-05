@@ -57,7 +57,7 @@ def test_parsing(raw_data: dict[str, str]) -> None:
     assert morning.icon == "22"
     assert morning.temp_low == 15.0
     assert morning.temp_high == 17.0
-    # assert morning.precipitation == 9.0
+    assert morning.precipitation == 9.0
     assert morning.wind_direction == "South-West"
     assert morning.wind_force == 10.0
     assert morning.wind_gusts == 30.0
@@ -68,7 +68,7 @@ def test_parsing(raw_data: dict[str, str]) -> None:
     assert afternoon.icon == "05"
     assert afternoon.temp_low == 12.0
     assert afternoon.temp_high == 14.0
-    # assert afternoon.precipitation == 5.0
+    assert afternoon.precipitation == 5.0
     assert afternoon.wind_direction == "North-West"
     assert afternoon.wind_force == 10.0
     assert afternoon.wind_gusts is None
@@ -79,7 +79,7 @@ def test_parsing(raw_data: dict[str, str]) -> None:
     assert evening.icon == "01"
     assert evening.temp_low == 11.0
     assert evening.temp_high == 13.0
-    # assert evening.precipitation == 1.0
+    assert evening.precipitation == 1.0
     assert evening.wind_direction == "North-West"
     assert evening.wind_force == 10.0
     assert evening.wind_gusts is None
