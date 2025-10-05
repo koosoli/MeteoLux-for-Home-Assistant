@@ -140,7 +140,7 @@ class MeteoluxData:
         forecast_data = api_data.get("forecast", api_data)
         history_data = api_data.get("data", {}).get("history")
         current_data = forecast_data.get("current", {})
-        now = datetime.now(timezone.utc)
+        now = datetime.now()
 
         created = now
         current_weather = None
@@ -414,6 +414,7 @@ class MeteoluxData:
         vigilances = []
         vigilance_data = api_data.get("vigilances", [])
         if vigilance_data:
+            now_utc = datetime.now(timezone.utc)
             for vigilance_item in vigilance_data:
                 if not vigilance_item:
                     continue
@@ -437,7 +438,7 @@ class MeteoluxData:
                         pass
 
                 # Skip expired warnings
-                if end_time and end_time < now:
+                if end_time and end_time < now_utc:
                     _LOGGER.debug(f"Skipping expired vigilance warning: {vigilance_item}")
                     continue
 
@@ -578,7 +579,11 @@ def _parse_api_value(value: str | None) -> float | None:
 
 def _parse_precipitation(value: str | None) -> float | None:
     """Parse precipitation string (e.g., '7-9 l/m²') and return the higher value in mm."""
-    return _parse_float_from_string(value)
+    if value is None:
+        return None
+    cleaned_value = value.split(" ")[0]
+    _, high = _parse_range(cleaned_value)
+    return high
 
 
 def _parse_wind_force(value: str | None) -> float | None:
