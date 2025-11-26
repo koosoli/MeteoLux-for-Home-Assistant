@@ -140,7 +140,7 @@ class MeteoluxData:
         forecast_data = api_data.get("forecast", api_data)
         history_data = api_data.get("data", {}).get("history")
         current_data = forecast_data.get("current", {})
-        now = datetime.now(timezone.utc)
+        now = datetime.now()
 
         created = now
         current_weather = None

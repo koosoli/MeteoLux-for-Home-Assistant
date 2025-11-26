@@ -98,7 +98,7 @@ def api_response_data() -> dict[str, any]:
 
 def test_api_response_parsing(api_response_data: dict[str, any]) -> None:
     """Test parsing of API response data."""
-    data = MeteoluxData.from_api_response(api_response_data, "test_endpoint")
+    data = MeteoluxData.from_api_response(api_response_data)
 
     # Test current weather
     assert data.current_weather is not None
@@ -159,7 +159,7 @@ def test_api_response_with_missing_data() -> None:
         "hourly": []
     }
     
-    data = MeteoluxData.from_api_response(minimal_data, "test_endpoint")
+    data = MeteoluxData.from_api_response(minimal_data)
 
     assert data.current_weather is not None
     assert data.current_weather.temperature == 15.0
@@ -172,7 +172,7 @@ def test_api_response_empty() -> None:
     """Test parsing of empty API response."""
     empty_data = {}
     
-    data = MeteoluxData.from_api_response(empty_data, "test_endpoint")
+    data = MeteoluxData.from_api_response(empty_data)
 
     assert data.current_weather is not None
     assert data.current_weather.temperature is None

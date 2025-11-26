@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -41,16 +40,8 @@ def _get_vigilance_level(data: MeteoluxData) -> str | int:
     if not data.vigilances:
         return "none"
 
-    now = datetime.now(timezone.utc)
-    active_warnings = [
-        v for v in data.vigilances if v.datetime_end and v.datetime_end > now
-    ]
-
-    if not active_warnings:
-        return "none"
-
     highest_level = 0
-    for v in active_warnings:
+    for v in data.vigilances:
         if v.level and v.level > highest_level:
             highest_level = v.level
 
@@ -62,17 +53,9 @@ def _get_vigilance_attributes(data: MeteoluxData) -> dict[str, Any]:
     if not data.vigilances:
         return {}
 
-    now = datetime.now(timezone.utc)
-    active_warnings = [
-        v for v in data.vigilances if v.datetime_end and v.datetime_end > now
-    ]
-
-    if not active_warnings:
-        return {}
-
     highest_vigilance = None
     highest_level = 0
-    for v in active_warnings:
+    for v in data.vigilances:
         if v.level and v.level > highest_level:
             highest_level = v.level
             highest_vigilance = v
@@ -90,7 +73,7 @@ def _get_vigilance_attributes(data: MeteoluxData) -> dict[str, Any]:
         else None,
         "type": highest_vigilance.type,
         "region": highest_vigilance.region,
-        "active_warnings": len(active_warnings),
+        "active_warnings": len(data.vigilances),
     }
 
 
